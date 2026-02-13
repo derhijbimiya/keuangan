@@ -1,0 +1,274 @@
+/**
+ * Theme.gs
+ * - Theme acak di login
+ * - Theme default user tersimpan di Users!I
+ * - Dashboard bisa ganti theme & tersimpan permanen
+ *
+ * UPDATED v2:
+ * - 3 tema baru: Cyber Pink, Dark Red Japan, Dark Blue Modern
+ * - Variabel CSS lebih lengkap: --bg-main, --bg-card, --accent, --accent-soft, dll
+ * - Backward compatibility untuk variabel lama (--bg, --card, --primary, dll)
+ * - apiThemeList() mengembalikan css + description untuk setiap tema
+ */
+
+const THEME_DEFAULT_KEY = 'dark-blue-modern';
+
+const THEME_REGISTRY = Object.freeze({
+  'cyber-pink': {
+    name: 'Cyber Pink',
+    description: 'Futuristik / cyber / gaming',
+    vars: {
+      bgMain: '#0b0610',
+      bgCard: '#150a1f',
+      accent: '#ff4fd8',
+      accentSoft: 'rgba(255,79,216,.25)',
+      textMain: '#ffffff',
+      textSoft: 'rgba(255,255,255,.7)',
+      bgGradient: 'linear-gradient(135deg,#07030a,#14081d)',
+      topbarBg: '#120717',
+      inputBg: '#1a0f25',
+      borderColor: 'rgba(255,79,216,.3)',
+      cardShadow: '0 0 25px rgba(255,79,216,.15)'
+    }
+  },
+  'dark-red-japan': {
+    name: 'Dark Red Japan',
+    description: 'Nuansa Jepang modern / samurai / zen dark',
+    vars: {
+      bgMain: '#0d0505',
+      bgCard: '#1a0b0b',
+      accent: '#c1121f',
+      accentSoft: 'rgba(193,18,31,.25)',
+      textMain: '#fff5f5',
+      textSoft: 'rgba(255,230,230,.7)',
+      bgGradient: 'linear-gradient(135deg,#090303,#1a0808)',
+      topbarBg: '#140707',
+      inputBg: '#220c0c',
+      borderColor: 'rgba(193,18,31,.4)',
+      cardShadow: '0 0 20px rgba(193,18,31,.2)'
+    }
+  },
+  'dark-blue-modern': {
+    name: 'Dark Blue Modern',
+    description: 'Tech style / professional',
+    vars: {
+      bgMain: '#050b14',
+      bgCard: '#0b1624',
+      accent: '#3b82f6',
+      accentSoft: 'rgba(59,130,246,.25)',
+      textMain: '#eaf2ff',
+      textSoft: 'rgba(200,220,255,.7)',
+      bgGradient: 'linear-gradient(135deg,#02070f,#07172c)',
+      topbarBg: '#081427',
+      inputBg: '#0e1d36',
+      borderColor: 'rgba(59,130,246,.4)',
+      cardShadow: '0 0 25px rgba(59,130,246,.2)'
+    }
+  }
+});
+
+function themeNormalizeKey_(key) {
+  key = String(key || '').trim();
+  
+  // Backward compatibility - map old theme keys to new ones
+  const aliases = {
+    'pink-hitam-modern': 'cyber-pink',
+    'dark-japan-modern': 'dark-red-japan'
+  };
+  
+  if (aliases[key]) {
+    key = aliases[key];
+  }
+  
+  return THEME_REGISTRY[key] ? key : THEME_DEFAULT_KEY;
+}
+
+function themeVarsToCss_(vars) {
+  const v = vars || {};
+  const defaultVars = THEME_REGISTRY[THEME_DEFAULT_KEY].vars;
+  
+  const safe = {
+    bgMain: v.bgMain || defaultVars.bgMain,
+    bgCard: v.bgCard || defaultVars.bgCard,
+    accent: v.accent || defaultVars.accent,
+    accentSoft: v.accentSoft || defaultVars.accentSoft,
+    textMain: v.textMain || defaultVars.textMain,
+    textSoft: v.textSoft || defaultVars.textSoft,
+    bgGradient: v.bgGradient || defaultVars.bgGradient,
+    topbarBg: v.topbarBg || defaultVars.topbarBg,
+    inputBg: v.inputBg || defaultVars.inputBg,
+    borderColor: v.borderColor || defaultVars.borderColor,
+    cardShadow: v.cardShadow || defaultVars.cardShadow
+  };
+
+  // Generate CSS dengan variabel baru + backward compatibility untuk variabel lama
+  return `:root{
+  --bg-main:${safe.bgMain};
+  --bg-card:${safe.bgCard};
+  --accent:${safe.accent};
+  --accent-soft:${safe.accentSoft};
+  --text-main:${safe.textMain};
+  --text-soft:${safe.textSoft};
+  --topbar-bg:${safe.topbarBg};
+  --input-bg:${safe.inputBg};
+  --border-color:${safe.borderColor};
+  --card-shadow:${safe.cardShadow};
+  
+  /* Backward compatibility - map ke variabel lama */
+  --bg:${safe.bgMain};
+  --card:${safe.bgCard};
+  --text:${safe.textMain};
+  --muted:${safe.textSoft};
+  --primary:${safe.accent};
+  --primary2:${safe.accent};
+  --border:${safe.borderColor};
+  --inputBg:${safe.inputBg};
+}
+
+/* Apply body background with theme gradient */
+body.auth,
+body.dashboard{
+  background:${safe.bgGradient}!important;
+  color:${safe.textMain};
+}
+
+body.auth .phone,
+body.dashboard .cardx,
+body.dashboard .panelx,
+body.dashboard .chart-card,
+body.dashboard .xcard,
+body.dashboard .menu-card{
+  background:${safe.bgCard};
+  border:1px solid ${safe.borderColor};
+  box-shadow:${safe.cardShadow};
+}
+
+body.auth .topbar,
+body.dashboard .topbar{
+  background:${safe.topbarBg};
+  border-color:${safe.borderColor};
+}
+
+body.auth .btn,
+body.auth .btn.primary,
+body.dashboard .btn,
+body.dashboard .btn.primary{
+  background:linear-gradient(135deg,${safe.accent},${safe.accent})!important;
+  color:${safe.bgMain}!important;
+}
+
+body.auth .seg2btn.active,
+body.dashboard .seg2btn.active,
+body.auth .mode-btn.active,
+body.dashboard .mode-btn.active{
+  background:${safe.accent}!important;
+  color:${safe.bgMain}!important;
+}
+
+body.auth .value-xl,
+body.dashboard .value-xl{
+  color:${safe.accent}!important;
+}
+
+body.auth select,
+body.auth input,
+body.dashboard select,
+body.dashboard input{
+  background:${safe.inputBg};
+  color:${safe.textMain};
+  border-color:${safe.borderColor};
+}
+
+body.dashboard .mini-btn.glow{
+  background:${safe.accent}!important;
+  color:${safe.bgMain}!important;
+}
+
+body.dashboard .brand-mark{
+  background:linear-gradient(135deg,${safe.accentSoft},${safe.accent})!important;
+}
+
+body.dashboard .pill,
+body.auth .badge-v2{
+  background:${safe.accentSoft}!important;
+  color:${safe.textMain}!important;
+}
+
+body.dashboard .report-v.positive,
+body.dashboard .td-nominal.positive{
+  color:${safe.accent}!important;
+}
+
+body.dashboard .td-keperluan.pemasukan{
+  background:${safe.accentSoft}!important;
+  color:${safe.textMain}!important;
+}`;
+}
+
+function themeBuildResponse_(key) {
+  const normKey = themeNormalizeKey_(key);
+  const t = THEME_REGISTRY[normKey] || THEME_REGISTRY[THEME_DEFAULT_KEY];
+  return { 
+    key: normKey, 
+    name: t.name, 
+    vars: t.vars, 
+    css: themeVarsToCss_(t.vars),
+    logoUrl: getThemeLogoUrl_(normKey)
+  };
+}
+
+function apiThemeList() {
+  const themes = Object.keys(THEME_REGISTRY).map(k => {
+    const t = THEME_REGISTRY[k];
+    return { 
+      key: k, 
+      name: t.name, 
+      description: t.description || '',
+      css: themeVarsToCss_(t.vars) 
+    };
+  });
+  return { ok: true, themes: themes };
+}
+
+function apiThemeRandomForLogin() {
+  const keys = Object.keys(THEME_REGISTRY);
+  const randKey = keys[Math.floor(Math.random() * keys.length)] || THEME_DEFAULT_KEY;
+  return { ok: true, active: themeBuildResponse_(randKey) };
+}
+
+function themeGetUserThemeKey_(username) {
+  username = normalizeUsername_(username);
+  const found = findUserRowByUsername_(username);
+  if (!found.rowIndex) return THEME_DEFAULT_KEY;
+
+  const raw = String(found.row[CONFIG.USERS_COL.theme - 1] || '').trim();
+  return themeNormalizeKey_(raw);
+}
+
+function apiThemeGetMyTheme() {
+  const username = getSessionUser_();
+  if (!username) return { ok: false, message: 'Belum login.' };
+
+  const key = themeGetUserThemeKey_(username);
+  const themes = Object.keys(THEME_REGISTRY).map(k => ({ 
+    key: k, 
+    name: THEME_REGISTRY[k].name,
+    description: THEME_REGISTRY[k].description || ''
+  }));
+
+  return { ok: true, active: themeBuildResponse_(key), themes: themes };
+}
+
+function apiThemeSetMyTheme(themeKey) {
+  const username = getSessionUser_();
+  if (!username) return { ok: false, message: 'Belum login.' };
+
+  const key = themeNormalizeKey_(themeKey);
+  const found = findUserRowByUsername_(normalizeUsername_(username));
+  if (!found.rowIndex) return { ok: false, message: 'User tidak ditemukan.' };
+
+  const sh = getSheetOrThrow_(CONFIG.USERS_SHEET_NAME);
+  sh.getRange(found.rowIndex, CONFIG.USERS_COL.theme).setValue(key);
+
+  return { ok: true, active: themeBuildResponse_(key) };
+}
