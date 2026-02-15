@@ -406,27 +406,37 @@ function apiProfileUpdate(payload) {
   const found = findUserRowByUsername_(normalizeUsername_(username));
   if (!found.rowIndex) return { ok: false, message: 'User tidak ditemukan.' };
 
+  let fotoUrl = String(payload?.fotoUrl || '').trim();
+  // Jika hanya update foto (dari simpan foto), langsung update kolom foto saja
+  if (fotoUrl && !payload?.nama && !payload?.email && !payload?.themeKey) {
+    const sh = getSheetOrThrow_(CONFIG.USERS_SHEET_NAME);
+    sh.getRange(found.rowIndex, CONFIG.USERS_COL.foto).setValue(fotoUrl);
+    return {
+      ok: true,
+      message: 'Foto profil berhasil diupdate.',
+      profile: { username, fotoUrl }
+    };
+  }
+  // Mode update profil lengkap (nama/email/theme/foto)
   const nama = String(payload?.nama || '').trim();
   const email = normalizeEmail_(payload?.email);
-  const fotoUrl = String(payload?.fotoUrl || '').trim();
   const themeKey = themeNormalizeKey_(payload?.themeKey);
-
   if (!nama) return { ok: false, message: 'Nama wajib diisi.' };
   if (!isValidEmail_(email)) return { ok: false, message: 'Email tidak valid.' };
-
   // email uniqueness (boleh sama dengan email milik user sendiri)
   const emailFound = findUserRowByEmail_(email);
   if (emailFound.rowIndex && emailFound.rowIndex !== found.rowIndex) {
     return { ok: false, message: 'Email sudah dipakai user lain.' };
   }
-
+  // Ambil foto lama jika payload.fotoUrl kosong
+  if (!fotoUrl) {
+    fotoUrl = String(found.row[CONFIG.USERS_COL.foto - 1] || '').trim();
+  }
   const sh = getSheetOrThrow_(CONFIG.USERS_SHEET_NAME);
-
   sh.getRange(found.rowIndex, CONFIG.USERS_COL.nama).setValue(nama);
   sh.getRange(found.rowIndex, CONFIG.USERS_COL.email).setValue(email);
   sh.getRange(found.rowIndex, CONFIG.USERS_COL.foto).setValue(fotoUrl);
   sh.getRange(found.rowIndex, CONFIG.USERS_COL.theme).setValue(themeKey);
-
   return {
     ok: true,
     message: 'Profil berhasil disimpan.',
