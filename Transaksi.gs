@@ -1,4 +1,77 @@
 /**
+ * Urutkan dan hitung ulang saldo untuk semua user (TX1 & TX2).
+ * Panggil dari Apps Script Editor: manualSortAndRecalcAllUsers_()
+ */
+function manualSortAndRecalcAllUsers_() {
+  const ss = getActiveSpreadsheet_();
+  const usersSheet = ss.getSheetByName(CONFIG.USERS_SHEET_NAME);
+  if (!usersSheet) throw new Error('Sheet Users tidak ditemukan');
+  const users = usersSheet.getRange(2, CONFIG.USERS_COL.username, usersSheet.getLastRow() - 1, 1).getValues()
+    .map(r => String(r[0] || '').trim()).filter(Boolean);
+  let count = 0;
+  users.forEach(username => {
+    try {
+      const uname = normalizeUsername_(username);
+      const sh1 = ensureUserTx1Sheet(ss, uname);
+      const sh2 = ensureUserTx2Sheet(ss, uname);
+      sortTxSheetByDate_(sh1, 2);
+      recalculateSaldoTx1_(sh1);
+      sortTxSheetByDate_(sh2, 2);
+      recalculateSaldoTx2_(sh2);
+      _updateTotSheet_(uname);
+      count++;
+    } catch (e) {
+      Logger.log('Gagal proses user: ' + username + ' => ' + e);
+    }
+  });
+  Logger.log('Selesai proses ' + count + ' user.');
+}
+/**
+ * Mengurutkan sheet transaksi berdasarkan tanggal (ascending)
+ * @param {Sheet} sheet - sheet transaksi
+ * @param {number} tanggalCol - index kolom tanggal (1-based)
+ */
+function sortTxSheetByDate_(sheet, tanggalCol) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 3) return; // hanya header + 1 data, tidak perlu urut
+  // Urutkan seluruh data (tanpa header)
+  sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn())
+    .sort({ column: tanggalCol, ascending: true });
+}
+
+/**
+ * Hitung ulang saldo rekening di TX1 sheet setelah urut tanggal
+ * Kolom saldo: F (6)
+ */
+function recalculateSaldoTx1_(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+  let saldo = 0;
+  for (let i = 2; i <= lastRow; i++) {
+    const pengeluaran = Number(sheet.getRange(i, 3).getValue()) || 0;
+    const pemasukan = Number(sheet.getRange(i, 4).getValue()) || 0;
+    const tabungan = Number(sheet.getRange(i, 5).getValue()) || 0;
+    saldo = saldo + pemasukan - pengeluaran - tabungan;
+    sheet.getRange(i, 6).setValue(saldo);
+  }
+}
+
+/**
+ * Hitung ulang saldo tabungan di TX2 sheet setelah urut tanggal
+ * Kolom saldo: F (6)
+ */
+function recalculateSaldoTx2_(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+  let saldo = 0;
+  for (let i = 2; i <= lastRow; i++) {
+    const tambah = Number(sheet.getRange(i, 4).getValue()) || 0;
+    const pakai = Number(sheet.getRange(i, 5).getValue()) || 0;
+    saldo = saldo + tambah - pakai;
+    sheet.getRange(i, 6).setValue(saldo);
+  }
+}
+/**
  * Transaksi.gs (UPDATED sesuai penambahan kolom jumlah_tambah_tabungan di TX2
  * dan update TOT sheet menambahkan kolom "total_tabungan" (Masuk Ke Tabungan dari rekening))
  *
@@ -65,9 +138,9 @@ function ensureUserTx1Sheet_(ss, username) {
 
   sh = ss.insertSheet(sheetName);
 
-  // Header TX1: A..H
+  // Header TX1: A..I (tambah kolom struck)
   const header = [
-    'no', 'tanggal', 'pengeluaran', 'pemasukan', 'tabungan', 'saldo_rekening', 'id_transaksi', 'keterangan'
+    'no', 'tanggal', 'pengeluaran', 'pemasukan', 'tabungan', 'saldo_rekening', 'id_transaksi', 'keterangan', 'struck'
   ];
   sh.getRange(1, 1, 1, header.length).setValues([header]);
   sh.setFrozenRows(1);
@@ -296,7 +369,7 @@ function _readTx1Rows_(username) {
   const sh = ensureUserTx1Sheet_(ss, normalizeUsername_(username));
   const lastRow = sh.getLastRow();
   if (lastRow < 2) return [];
-  return sh.getRange(2, 1, lastRow - 1, 8).getValues(); // A..H
+  return sh.getRange(2, 1, lastRow - 1, 9).getValues(); // A..I
 }
 
 function _readTx2Rows_(username) {
@@ -439,7 +512,7 @@ function apiDashboardSummary(rangeKey) {
     pemasukan: sum1.income,
     pengeluaran: sum1.expense,
 
-    tabungan_masuk: sum1.savingIn + sum2.savingManualIn,
+    tabungan_masuk: sum1.savingIn,
     tabungan_keluar: sum2.savingOut
   };
 }
@@ -584,29 +657,31 @@ function apiAddTxRekening(payload) {
   if (jenis === 'tabungan') { tabungan = nominal; nextSaldo = prevSaldo - nominal; }
 
   const nextRow = sh.getLastRow() + 1;
-  const row = [no, tanggal, pengeluaran, pemasukan, tabungan, nextSaldo, idTransaksi, keterangan];
+  // Tambahkan kolom struck (default kosong, bisa diupdate setelah upload)
+  const row = [no, tanggal, pengeluaran, pemasukan, tabungan, nextSaldo, idTransaksi, keterangan, ''];
+  if (payload && payload.struck) row[8] = payload.struck;
   sh.getRange(nextRow, 1, 1, row.length).setValues([row]);
 
-  // FIXED: Jika jenis transaksi adalah "tabungan", tambahkan juga ke TX2 sheet
+  // Setelah input, urutkan sheet dan hitung ulang saldo
+  sortTxSheetByDate_(sh, 2); // tanggal di kolom 2
+  recalculateSaldoTx1_(sh);
+
+  // Jika jenis tabungan, tambahkan juga ke TX2
   if (jenis === 'tabungan') {
     const sh2 = ensureUserTx2Sheet_(ss, uname);
     const shTot = ensureUserTotSheet_(ss, uname);
-    
     const noPakai = _lastNumberInSheetCol_(sh2, 1) + 1;
-    
     const prevSaldoTabungan = _lastSaldoTabunganFromTot_(shTot);
     const nextSaldoTabungan = prevSaldoTabungan + nominal;
-    
     const nextRowTx2 = sh2.getLastRow() + 1;
-    
-    // TX2 columns: A no, B tanggal, C keperluan, D tambah, E pakai, F saldo, G id
-    // PENTING: gunakan idTransaksi yang sama agar bisa tracking
     const row2 = [noPakai, tanggal, keterangan || 'Transfer dari rekening', nominal, 0, nextSaldoTabungan, idTransaksi];
     sh2.getRange(nextRowTx2, 1, 1, row2.length).setValues([row2]);
+    // Urutkan dan hitung ulang saldo tabungan
+    sortTxSheetByDate_(sh2, 2);
+    recalculateSaldoTx2_(sh2);
   }
 
   _updateTotSheet_(uname);
-
   return { ok: true, message: 'Transaksi rekening tersimpan.', id_transaksi: idTransaksi, row: nextRow, saldo_rekening: nextSaldo };
 }
 
@@ -654,9 +729,9 @@ function apiAddPakaiTabungan(payload) {
 
   const row = [noPakai, tanggal, keperluan, 0, jumlah, nextSaldo, idPakai];
   sh2.getRange(nextRow, 1, 1, row.length).setValues([row]);
-
+  sortTxSheetByDate_(sh2, 2);
+  recalculateSaldoTx2_(sh2);
   _updateTotSheet_(uname);
-
   return { ok: true, message: 'Pakai tabungan tersimpan.', id_pakai_tabungan: idPakai, row: nextRow, saldo_tabungan: nextSaldo };
 }
 
@@ -700,9 +775,9 @@ function apiAddTambahTabungan(payload) {
 
   const row = [noPakai, tanggal, keperluan, jumlah, 0, nextSaldo, idPakai];
   sh2.getRange(nextRow, 1, 1, row.length).setValues([row]);
-
+  sortTxSheetByDate_(sh2, 2);
+  recalculateSaldoTx2_(sh2);
   _updateTotSheet_(uname);
-
   return { ok: true, message: 'Tambah tabungan tersimpan.', id_pakai_tabungan: idPakai, row: nextRow, saldo_tabungan: nextSaldo };
 }
 

@@ -1,0 +1,222 @@
+<!doctype html>
+<html>
+  <head>
+    <base target="_top">
+    <!-- stylesdashboard di-include manual jika perlu, baris PHP-like dihapus -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tentang Aplikasi</title>
+    <!-- Pindahkan script ke bagian paling bawah sebelum </body> atau tetap di head tapi dengan format ini -->
+    <script>
+      function goHome(){
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run.withSuccessHandler(url => top.location.href = url).getHomeUrl();
+        } else {
+          window.location.href = '/';
+        }
+      }
+    </script>
+    <style>
+      :root {
+        --color-bg-main: #0a1621;
+        --color-bg-card: #fff;
+        --color-bg-card-dark: #19202a;
+        --color-primary: #eaf1ff;
+        --color-secondary: #2a4d7a;
+        --color-secondary-hover: #223a5e;
+        --color-text: #eaf1ff;
+        --color-text-soft: #b6c6e3;
+        --color-border: #2a4d7a33;
+        --color-shadow: 0 4px 32px 0 rgba(0,0,0,0.25);
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--color-bg-main);
+        font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+        color: var(--color-text);
+        min-height: 100vh;
+        overflow-y: auto;
+      }
+      .about-shell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        width: 100vw;
+        background: radial-gradient(ellipse at top left, #1a2636 0%, #0a1621 100%);
+      }
+      .about-card {
+        background: var(--color-bg-card-dark);
+        box-shadow: var(--color-shadow);
+        border-radius: 18px;
+        margin: 32px 0 32px 0;
+        padding: 32px 28px 32px 28px;
+        max-width: 600px;
+        width: 95vw;
+        overflow-y: auto;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        transition: box-shadow 0.2s;
+        border: 1.5px solid var(--color-border);
+      }
+      .about-card:hover {
+        box-shadow: 0 8px 40px 0 rgba(0,0,0,0.35);
+      }
+      .about-title {
+        font-size: 2.1rem;
+        font-weight: 700;
+        color: var(--color-primary);
+        margin-bottom: 0.5em;
+        letter-spacing: 0.5px;
+        text-align: center;
+        text-shadow: 0 2px 8px #0002;
+      }
+      .about-content h1, .about-content h2, .about-content h3 {
+        color: var(--color-primary);
+        margin-top: 1.2em;
+        margin-bottom: 0.5em;
+        text-shadow: 0 1px 6px #0002;
+      }
+      .about-content h1 {
+        font-size: 1.5rem;
+        font-weight: 600;
+      }
+      .about-content h2 {
+        font-size: 1.15rem;
+        font-weight: 500;
+      }
+      .about-content ul {
+        margin-left: 1.2em;
+        margin-bottom: 1em;
+        color: var(--color-text-soft);
+      }
+      .about-content li {
+        margin-bottom: 0.3em;
+        font-size: 1em;
+        color: var(--color-text-soft);
+      }
+      .about-content table {
+        width: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 1.5em;
+        background: #1a2636;
+        font-size: 0.98em;
+        color: var(--color-text);
+        border: 1px solid var(--color-border);
+      }
+      .about-content th, .about-content td {
+        padding: 8px 10px;
+        border: 1px solid #2a4d7a44;
+        text-align: left;
+      }
+      .about-content th {
+        background: #223a5e;
+        color: var(--color-primary);
+        font-weight: 600;
+      }
+      .about-content hr {
+        border: none;
+        border-top: 1.5px solid #2a4d7a33;
+        margin: 2em 0;
+      }
+      .about-content p {
+        color: var(--color-text-soft);
+      }
+      .btn-back-dashboard {
+        display: inline-block;
+        margin-bottom: 10px;
+        background: #223a5e;
+        color: var(--color-primary);
+        border: none;
+        border-radius: 6px;
+        padding: 7px 18px 7px 12px;
+        font-size: 1em;
+        font-weight: 500;
+        cursor: pointer;
+        box-shadow: 0 1px 4px 0 rgba(0,0,0,0.10);
+        transition: background 0.15s;
+      }
+      .btn-back-dashboard:hover {
+        background: #2a4d7a;
+      }
+      @media (max-width: 600px) {
+        .about-card {
+          padding: 18px 6vw 18px 6vw;
+          max-width: 99vw;
+        }
+        .about-title {
+          font-size: 1.3rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="about-shell">
+      <div class="about-card">
+        <button class="btn-back-dashboard" onclick="goHome()" title="Kembali ke Dashboard">⟵ Dashboard</button>
+        <div class="about-title">Tentang Aplikasi</div>
+        <div class="about-content">
+              <!-- Style moved to <head> for global dark mode effect -->
+          <!-- Konten README.md -->
+          <h1>Financial Applications V2</h1>
+          <h2>Kata Pengantar</h2>
+          <p>Selamat datang di Financial Applications V2, aplikasi manajemen keuangan pribadi multi-user berbasis Google Apps Script dan Google Sheets. Aplikasi ini dirancang untuk membantu Anda mencatat transaksi, mengelola tabungan, dan memantau keuangan dengan mudah melalui dashboard interaktif.</p>
+          <h2>Fungsi Utama Aplikasi</h2>
+          <ul>
+            <li>Multi-user dengan sistem login & autentikasi</li>
+            <li>Dashboard interaktif (grafik, saldo, rekap)</li>
+            <li>Pencatatan transaksi rekening & tabungan</li>
+            <li>Manajemen tabungan (tambah, pakai, transfer)</li>
+            <li>Rekap otomatis saldo & transaksi</li>
+            <li>Multi-tema tampilan (dark/light)</li>
+            <li>Upload & preset foto profil</li>
+            <li>Reset password via OTP email</li>
+          </ul>
+          <h2>Fitur Utama</h2>
+          <ul>
+            <li>✅ Multi-user dengan sistem autentikasi</li>
+            <li>✅ Dashboard interaktif dengan chart/grafik</li>
+            <li>✅ Pencatatan transaksi rekening (pemasukan, pengeluaran, transfer tabungan)</li>
+            <li>✅ Manajemen tabungan (tambah manual, pakai tabungan)</li>
+            <li>✅ Rekap otomatis dan ringkasan keuangan</li>
+            <li>✅ Multi-tema tampilan</li>
+            <li>✅ Upload foto profil</li>
+            <li>✅ Reset password dengan OTP via email</li>
+          </ul>
+          <h2>Daftar File & Kegunaan</h2>
+          <h3>Backend (Google Apps Script - .gs)</h3>
+          <ul>
+            <li><b>AppConfig.gs</b>: Konfigurasi utama aplikasi, mapping kolom sheet, preset avatar.</li>
+            <li><b>Auth.gs</b>: Sistem login, registrasi, OTP, update profil, validasi session.</li>
+            <li><b>Main.gs</b>: API dashboard, summary data, endpoint utama frontend.</li>
+            <li><b>Transaksi.gs</b>: Logika transaksi rekening & tabungan, CRUD transaksi.</li>
+            <li><b>Theme.gs</b>: Manajemen tema UI (dark/light/custom).</li>
+            <li><b>Kode.gs</b>: Helper functions, entry point Apps Script.</li>
+            <li><b>SESSION_SECURITY_DOCS.md</b>: Dokumentasi keamanan session (referensi).</li>
+          </ul>
+          <h3>Frontend (HTML/CSS)</h3>
+          <ul>
+            <li><b>loginpage.html</b>: Halaman login, registrasi, reset password.</li>
+            <li><b>dashboardpage.html</b>: Dashboard utama, chart, form transaksi, popup menu.</li>
+            <li><b>styleslogin.html</b>: CSS halaman login/registrasi.</li>
+            <li><b>stylesdashboard.html</b>: CSS dashboard, popup, theme, responsive.</li>
+          </ul>
+          <hr>
+          <h2>Struktur Spreadsheet</h2>
+          <p>Aplikasi menggunakan Google Sheets dengan struktur sheet dinamis per user. Berikut struktur utama:</p>
+          <h3>Sheet: Users</h3>
+          <p>Data akun pengguna (login, profil, tema, foto).</p>
+          <table>
+            <tr><th>Kolom</th><th>Nama Kolom</th><th>Keterangan</th></tr>
+            <tr><td>A</td><td>id</td><td>ID user (contoh: U001)</td></tr>
+            <tr><td>B</td><td>username</td><td>Username login</td></tr>
+            <tr><td>C</td><td>nama</td><td>Nama lengkap</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

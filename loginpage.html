@@ -3,8 +3,8 @@
   <head>
     <base target="_top">
     <?!= include('styleslogin'); ?>
-    <!-- Meta viewport di sini sebagai cadangan, yang utama ada di Code.gs -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta http-equiv="Content-Security-Policy" content="img-src 'self' data: https: http:;">
     <style id="themeStyle"></style>
   </head>
   <body class="auth">
@@ -13,13 +13,13 @@
     <section class="phone">
       <div class="topbar">
         <div class="logo">LOGO</div>
-        <div class="theme-mini">
+        <div class="theme-mini" title="Theme (default acak, bisa dipilih)">
           <select id="themeSelectLogin" onchange="applySelectedThemeOnLogin()"></select>
         </div>
       </div>
 
       <div class="header">
-        <div class="avatar">👤</div>
+        <div class="avatar" aria-hidden="true">👤</div>
         <h1 class="headline">
           <span class="title-text">Financial Applications</span>
           <span class="badge-v2">V2</span>
@@ -34,236 +34,662 @@
         </div>
       </div>
 
-      <div class="curve"></div>
+      <div class="curve" aria-hidden="true"></div>
 
       <div class="form">
-        <!-- LOGIN PANEL -->
+        <!-- LOGIN -->
         <div id="panel-login" class="panel active">
-          <!-- Google Sign-In Button -->
-          <div id="gSignInWrapper" style="margin-bottom:16px; text-align:center">
-            <div id="g_id_onload"
-              data-client_id="YOUR_GOOGLE_CLIENT_ID"
-              data-context="signin"
-              data-ux_mode="popup"
-              data-callback="onGoogleSignIn"
-              data-auto_prompt="false">
-            </div>
-            <div class="g_id_signin"
-              data-type="standard"
-              data-shape="rectangular"
-              data-theme="outline"
-              data-text="sign_in_with"
-              data-size="large"
-              data-logo_alignment="left">
-            </div>
-          </div>
-          <div class="field"><input id="login-username" placeholder="USER NAME/ID"></div>
-          <div class="field"><input id="login-password" type="password" placeholder="PASSWORD"></div>
+            <div class="field"><input id="login-username" placeholder="USER NAME/ID" autocomplete="username" required autofocus></div>
+            <div class="field"><input id="login-password" type="password" placeholder="PASSWORD" autocomplete="current-password" required></div>
 
-          <button id="btnLogin" class="btn" onclick="login()">LOGIN</button>
+          <button id="btnLogin" class="btn" onclick="login()">
+            <span class="btn-label"><span>LOGIN</span></span>
+          </button>
 
           <div class="row">
-            <span class="remember"><input id="rememberMe" type="checkbox"> Remember me</span>
+            <span class="remember"><input id="rememberMe" type="checkbox"> Remember me (7 hari)</span>
             <a class="link" onclick="showPanel('forgot')">Forgot password?</a>
           </div>
 
-          <div class="row" style="justify-content:center; margin-top:20px;">
-            <span style="color:rgba(255,255,255,0.6)">Not registered?</span>
-            <a class="link" onclick="startSignupWizard()" style="margin-left:8px">Create account</a>
+          <div class="row" style="justify-content:center;">
+            <span style="font-size:12px;color:rgba(255,255,255,0.70);">Not registered yet?</span>
+            <a class="link" onclick="startSignupWizard()" style="text-decoration:underline;">Create an account</a>
           </div>
         </div>
 
-        <!-- SIGNUP PANEL -->
+        <!-- SIGNUP WIZARD -->
         <div id="panel-signup" class="panel">
+          <!-- STEP 1 -->
           <div id="su-step-1" class="su-step">
-            <div class="field"><input id="su-username" placeholder="USERNAME"></div>
+            <div class="field"><input id="su-username" placeholder="USERNAME (nama pendek)"></div>
             <div class="field"><input id="su-nama" placeholder="NAMA LENGKAP"></div>
-            <div class="field"><input id="su-email" placeholder="EMAIL GMAIL"></div>
-            <button id="btnSu1" class="btn" onclick="signupNextFromStep1()">NEXT (Send OTP)</button>
-            <button class="btn secondary" onclick="showPanel('login')">BACK</button>
+            <div class="field"><input id="su-email" placeholder="EMAIL (Gmail)"></div>
+
+            <div class="helper">Tekan <b>Enter</b> atau klik <b>Next</b> untuk mengirim OTP.</div>
+
+            <div class="wizard-nav">
+              <button class="btn secondary" onclick="showPanel('login')">BACK</button>
+              <button id="btnSu1" class="btn primary" onclick="signupNextFromStep1()">
+                <span class="btn-label"><span>NEXT</span></span>
+              </button>
+            </div>
           </div>
-          <div id="su-step-2" class="su-step" style="display:none">
-            <div class="field"><input id="su-otp" placeholder="OTP CODE"></div>
-            <button class="btn" onclick="signupNext()">NEXT</button>
-            <button class="btn secondary" onclick="signupPrev()">BACK</button>
+
+          <!-- STEP 2 -->
+          <div id="su-step-2" class="su-step" style="display:none;">
+            <div class="field"><input id="su-otp" placeholder="OTP CODE (6 digit)"></div>
+            <div class="helper">Tekan <b>Enter</b> untuk lanjut.</div>
+
+            <div class="wizard-nav">
+              <button class="btn secondary" onclick="signupPrev()">BACK</button>
+              <button id="btnSu2" class="btn primary" onclick="signupNext()">
+                <span class="btn-label"><span>NEXT</span></span>
+              </button>
+            </div>
           </div>
-          <div id="su-step-3" class="su-step" style="display:none">
+
+          <!-- STEP 3 -->
+          <div id="su-step-3" class="su-step" style="display:none;">
             <div class="field"><input id="su-password" type="password" placeholder="PASSWORD"></div>
             <div class="field"><input id="su-password2" type="password" placeholder="CONFIRM PASSWORD"></div>
-            <button class="btn" onclick="signupNext()">NEXT</button>
-            <button class="btn secondary" onclick="signupPrev()">BACK</button>
+            <div class="helper">Tekan <b>Enter</b> untuk lanjut.</div>
+
+            <div class="wizard-nav">
+              <button class="btn secondary" onclick="signupPrev()">BACK</button>
+              <button id="btnSu3" class="btn primary" onclick="signupNext()">
+                <span class="btn-label"><span>NEXT</span></span>
+              </button>
+            </div>
           </div>
-          <div id="su-step-4" class="su-step" style="display:none">
-             <div style="font-size:12px; margin-bottom:10px">Pilih Foto Profil (Opsional)</div>
-             <div id="presetGrid" class="preset-grid"></div>
-             <div class="field"><select id="su-theme"></select></div>
-             <input id="su-fotoUrl" type="hidden">
-             <button id="btnCreate" class="btn" onclick="signupSubmit()">CREATE ACCOUNT</button>
-             <button class="btn secondary" onclick="signupPrev()">BACK</button>
+
+          <!-- STEP 4 -->
+          <div id="su-step-4" class="su-step" style="display:none;">
+            <div class="helper"><b>Pilih Foto Profil</b> (opsional) — pilih preset atau upload sendiri.</div>
+
+            <div id="presetGrid" class="preset-grid"></div>
+
+            <div class="field" style="height:auto; padding:12px;">
+              <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
+                <div style="font-size:12px; color: rgba(255,255,255,0.72); font-weight:850;">UPLOAD FOTO (opsional)</div>
+                <input id="su-photo" type="file" accept="image/*" onchange="uploadSignupPhoto()" style="color: rgba(255,255,255,0.85);" />
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <img id="su-photo-preview" alt="" style="display:none; width:42px; height:42px; border-radius:999px; object-fit:cover; border:1px solid rgba(255,255,255,0.14);" />
+                  <div id="su-photo-status" style="font-size:12px; color: rgba(255,255,255,0.70);"></div>
+                </div>
+                <input id="su-fotoUrl" type="hidden" value="">
+              </div>
+            </div>
+
+            <div class="field"><select id="su-theme" title="Default theme user"></select></div>
+
+            <div class="wizard-nav">
+              <button class="btn secondary" onclick="signupPrev()">BACK</button>
+              <button id="btnCreate" class="btn primary" onclick="signupSubmit()">
+                <span class="btn-label"><span>CREATE</span></span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- FORGOT PANEL -->
+        <!-- FORGOT -->
         <div id="panel-forgot" class="panel">
           <div class="field"><input id="fp-email" placeholder="EMAIL"></div>
-          <button id="btnFpOtp" class="btn" onclick="sendOtp('reset')">SEND OTP</button>
+
+          <div class="row">
+            <button id="btnFpOtp" class="btn secondary" onclick="sendOtp('reset')">
+              <span class="btn-label"><span>SEND OTP</span></span>
+            </button>
+            <a class="link" onclick="showPanel('login')">Back</a>
+          </div>
+
           <div class="field"><input id="fp-otp" placeholder="OTP CODE"></div>
           <div class="field"><input id="fp-newpass" type="password" placeholder="NEW PASSWORD"></div>
-          <button id="btnReset" class="btn" onclick="resetPassword()">RESET PASSWORD</button>
-          <button class="btn secondary" onclick="showPanel('login')" style="margin-top:10px">BACK</button>
+          <div class="field"><input id="fp-newpass2" type="password" placeholder="CONFIRM PASSWORD"></div>
+
+          <button id="btnReset" class="btn" onclick="resetPassword()">
+            <span class="btn-label"><span>RESET</span></span>
+          </button>
         </div>
       </div>
     </section>
 
-    <script>
-          // Google Sign-In SDK
-          const script = document.createElement('script');
-          script.src = "https://accounts.google.com/gsi/client";
-          script.async = true;
-          script.defer = true;
-          document.head.appendChild(script);
-
-          // Google Sign-In callback
-          function onGoogleSignIn(response) {
-            // Decode JWT to get user info
-            const id_token = response.credential;
-            const payload = JSON.parse(atob(id_token.split('.')[1]));
-            const email = payload.email;
-            if(email){
-              // Kirim email ke backend Apps Script
-              google.script.run.withSuccessHandler(function(res){
-                if(res.ok){
-                  showToast('ok', 'Login Google', 'Login berhasil, mengalihkan...');
-                  google.script.run.withSuccessHandler(urlRes => {
-                    window.top.location.href = urlRes.url;
-                  }).apiGetAppUrl();
-                } else {
-                  showToast('err', 'Login Google', res.message || 'Gagal login Google');
-                }
-              }).apiLoginGoogle(email);
-            } else {
-              showToast('err', 'Login Google', 'Gagal mendapatkan email Google');
+      <script>
+      // Autofocus dan keyboard navigation
+      window.addEventListener('DOMContentLoaded', function() {
+        const usernameInput = document.getElementById('login-username');
+        const passwordInput = document.getElementById('login-password');
+        const loginBtn = document.getElementById('btnLogin');
+        if (usernameInput) usernameInput.focus();
+        if (usernameInput && passwordInput) {
+          usernameInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              // Jika password belum diisi, hanya pindah fokus
+              if (!passwordInput.value) {
+                passwordInput.focus();
+              } else {
+                // Jika password sudah diisi, trigger login
+                if (loginBtn) loginBtn.click();
+              }
             }
-          }
-      // SCRIPT LOGIN LOGIC (Tetap sama dengan milik Anda)
+          });
+          passwordInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (loginBtn) loginBtn.click();
+            }
+          });
+        }
+      });
+      </script>
+    <script>
+      // ===== toast =====
       let toastTimer = null;
       function showToast(type, title, message){
         const root = document.getElementById('toastRoot');
+        if(!root) return;
         root.style.display = 'flex';
-        root.innerHTML = `<div class="toast ${type}"><div class="bar"></div><div><p class="t-title">${title}</p><p class="t-msg">${message}</p></div><button class="close" onclick="hideToast()">×</button></div>`;
+        root.innerHTML = `
+          <div class="toast ${type}">
+            <div class="bar"></div>
+            <div>
+              <p class="t-title">${escapeHtml(title || '')}</p>
+              <p class="t-msg">${escapeHtml(message || '')}</p>
+            </div>
+            <button class="close" onclick="hideToast()">×</button>
+          </div>
+        `;
         if (toastTimer) clearTimeout(toastTimer);
-        toastTimer = setTimeout(hideToast, 4000);
+        toastTimer = setTimeout(hideToast, 4200);
       }
-      function hideToast(){ document.getElementById('toastRoot').style.display = 'none'; }
+      function hideToast(){
+        const root = document.getElementById('toastRoot');
+        if(!root) return;
+        root.style.display = 'none';
+        root.innerHTML = '';
+      }
+      function escapeHtml(s){
+        return String(s).replace(/[&<>"']/g, c => ({
+          '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+        })[c]);
+      }
 
-      function setBtnLoading(id, loading, success){
-        const b = document.getElementById(id);
-        if(loading){
-          b.disabled = true; b.innerHTML = '<span class="spinner"></span> LOADING...';
+      // ===== loading button =====
+      function setBtnLoading(btnId, loading, doneOk){
+        const btn = document.getElementById(btnId);
+        if(!btn) return;
+
+        if (loading){
+          btn.disabled = true;
+          btn.dataset._oldText = btn.textContent.trim();
+          btn.classList.remove('success');
+          btn.innerHTML = `<span class="btn-label"><span class="spinner"></span><span>LOADING</span></span>`;
+          return;
+        }
+
+        btn.disabled = false;
+
+        if (doneOk){
+          btn.classList.add('success');
+          btn.innerHTML = `<span class="btn-label"><span>✓ SUCCESS</span></span>`;
+          setTimeout(()=>{
+            btn.classList.remove('success');
+            btn.innerHTML = `<span class="btn-label"><span>${btn.dataset._oldText || 'OK'}</span></span>`;
+          }, 900);
         } else {
-          b.disabled = false; b.innerHTML = success ? 'SUCCESS ✓' : b.id.replace('btn','').toUpperCase();
+          btn.classList.remove('success');
+          btn.innerHTML = `<span class="btn-label"><span>${btn.dataset._oldText || 'OK'}</span></span>`;
         }
       }
 
-      function showPanel(p){
-        ['login','signup','forgot'].forEach(x => document.getElementById('panel-'+x).classList.toggle('active', x===p));
-        document.getElementById('signupDots').style.display = p === 'signup' ? 'flex' : 'none';
+      // ===== redirect (fix white page) =====
+      function hardRedirectHome_(){
+        google.script.run.withSuccessHandler(res=>{
+          const url = (res && res.ok && res.url) ? res.url : null;
+          window.top.location.href = url || window.location.href.split('?')[0];
+        }).apiGetAppUrl();
       }
 
-      function login(){
-        const u = document.getElementById('login-username').value;
-        const p = document.getElementById('login-password').value;
-        const r = document.getElementById('rememberMe').checked;
-        if(!u || !p) return showToast('err', 'Gagal', 'Username & Password wajib diisi');
-        
-        setBtnLoading('btnLogin', true);
-        google.script.run.withSuccessHandler(res => {
-          setBtnLoading('btnLogin', false, res.ok);
-          if(res.ok){
-            if(r) localStorage.setItem('sessionToken', res.sessionToken);
-            else sessionStorage.setItem('sessionToken', res.sessionToken);
-            showToast('ok', 'Berhasil', 'Mengalihkan...');
-            google.script.run.withSuccessHandler(urlRes => {
-               window.top.location.href = urlRes.url;
-            }).apiGetAppUrl();
-          } else showToast('err', 'Gagal', res.message);
-        }).apiLogin(u, p, r);
-      }
+      // ===== theme cache =====
+      const themeCssCache = {};
+      function applyThemeCss(css){ document.getElementById('themeStyle').textContent = css || ''; }
 
-      // Signup Wizard logic
-      let signupStep = 1;
-      function setSignupStep(s){
-        signupStep = s;
-        [1,2,3,4].forEach(i => document.getElementById('su-step-'+i).style.display = i===s ? 'block' : 'none');
-        document.querySelectorAll('.wizard-steps .dot').forEach((d,i) => d.classList.toggle('active', (i+1)===s));
-      }
-      function signupPrev(){ if(signupStep > 1) setSignupStep(signupStep-1); }
-      function signupNext(){ 
-        if(signupStep === 2 && !document.getElementById('su-otp').value) return;
-        if(signupStep === 3){
-          if(document.getElementById('su-password').value !== document.getElementById('su-password2').value) return showToast('err','Error','Password tidak cocok');
-        }
-        setSignupStep(signupStep+1); 
-      }
-      function startSignupWizard(){ showPanel('signup'); setSignupStep(1); loadAvatarPresets(); }
-      
-      function signupNextFromStep1(){
-        const e = document.getElementById('su-email').value;
-        if(!e) return;
-        setBtnLoading('btnSu1', true);
-        google.script.run.withSuccessHandler(res => {
-          setBtnLoading('btnSu1', false, res.ok);
-          if(res.ok){ showToast('ok','OTP Terkirim','Cek email Anda'); setSignupStep(2); }
-          else showToast('err','Gagal',res.message);
-        }).apiSendOtp('signup', e);
-      }
+      function loadThemeList(){
+        google.script.run.withSuccessHandler(res=>{
+          if(!res || !res.ok) return;
 
-      function signupSubmit(){
-        const p = {
-          username: document.getElementById('su-username').value,
-          nama: document.getElementById('su-nama').value,
-          email: document.getElementById('su-email').value,
-          otp: document.getElementById('su-otp').value,
-          password: document.getElementById('su-password').value,
-          theme: document.getElementById('su-theme').value,
-          fotoUrl: document.getElementById('su-fotoUrl').value
-        };
-        setBtnLoading('btnCreate', true);
-        google.script.run.withSuccessHandler(res => {
-          setBtnLoading('btnCreate', false, res.ok);
-          if(res.ok){ showToast('ok','Berhasil','Akun dibuat, silakan login'); showPanel('login'); }
-          else showToast('err','Gagal',res.message);
-        }).apiSignup(p);
-      }
+          const sel = document.getElementById('themeSelectLogin');
+          const suSel = document.getElementById('su-theme');
+          sel.innerHTML = '';
+          suSel.innerHTML = '';
 
-      function loadAvatarPresets(){
-        google.script.run.withSuccessHandler(res => {
-          const g = document.getElementById('presetGrid'); g.innerHTML = '';
-          res.presets.forEach(p => {
-            const d = document.createElement('div'); d.className = 'preset-item';
-            d.innerHTML = `<img src="${p.url}"><div class="nm">${p.name}</div>`;
-            d.onclick = () => {
-              document.querySelectorAll('.preset-item').forEach(x => x.classList.remove('active'));
-              d.classList.add('active'); document.getElementById('su-fotoUrl').value = p.url;
-            };
-            g.appendChild(d);
-          });
-        }).apiAvatarPresetList();
-      }
+          (res.themes || []).forEach(t=>{
+            if (t.css) themeCssCache[t.key] = t.css;
 
-      function loadThemes(){
-        google.script.run.withSuccessHandler(res => {
-          const s = document.getElementById('themeSelectLogin');
-          const su = document.getElementById('su-theme');
-          res.themes.forEach(t => {
-            const o = new Option(t.name, t.key); s.add(o);
-            su.add(new Option(t.name, t.key));
+            const opt = document.createElement('option');
+            opt.value = t.key;
+            opt.textContent = t.name;
+            sel.appendChild(opt);
+
+            const opt2 = document.createElement('option');
+            opt2.value = t.key;
+            opt2.textContent = t.name;
+            suSel.appendChild(opt2);
           });
         }).apiThemeList();
       }
 
-      window.onload = () => { loadThemes(); };
-      // End Google Sign-In
+      function loadRandomTheme(){
+        google.script.run.withSuccessHandler(res=>{
+          if(!res || !res.ok) return;
+          applyThemeCss(res.active.css);
+          document.getElementById('themeSelectLogin').value = res.active.key;
+          document.getElementById('su-theme').value = res.active.key;
+        }).apiThemeRandomForLogin();
+      }
+
+      function applySelectedThemeOnLogin(){
+        const key = document.getElementById('themeSelectLogin').value;
+        if (themeCssCache[key]) applyThemeCss(themeCssCache[key]);
+        const su = document.getElementById('su-theme');
+        if (su) su.value = key;
+      }
+
+      // ===== Avatar fallback generator =====
+      function extractDriveFileId_(url) {
+        if (!url || typeof url !== 'string') return '';
+        url = url.trim();
+        
+        // Jika sudah berupa File ID murni (20-50 karakter alphanumeric)
+        if (url.length >= 20 && url.length <= 50 && /^[a-zA-Z0-9_-]+$/.test(url)) {
+          return url;
+        }
+        
+        // Extract dari berbagai format URL Drive
+        // 1. /uc?export=view&id=FILE_ID atau /uc?id=FILE_ID&export=view
+        let match = url.match(/[?&]id=([a-zA-Z0-9_-]{20,50})/);
+        if (match) return match[1];
+        
+        // 2. /file/d/FILE_ID/view
+        match = url.match(/\/file\/d\/([a-zA-Z0-9_-]{20,50})/);
+        if (match) return match[1];
+        
+        // 3. /open?id=FILE_ID
+        match = url.match(/\/open\?id=([a-zA-Z0-9_-]{20,50})/);
+        if (match) return match[1];
+        
+        // 4. /thumbnail?id=FILE_ID
+        match = url.match(/\/thumbnail\?id=([a-zA-Z0-9_-]{20,50})/);
+        if (match) return match[1];
+        
+        return '';
+      }
+      
+      function normalizeDriveUrl_(url) {
+        if (!url || typeof url !== 'string') return '';
+        
+        // Extract File ID dari URL atau langsung dari File ID
+        const fileId = extractDriveFileId_(url);
+        
+        // Jika tidak dapat File ID, return original
+        if (!fileId) return url;
+        
+        // Convert ke thumbnail API yang reliable untuk embedding
+        return 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w400';
+      }
+      
+      function makeAvatarFallback_(name) {
+        const initials = getInitials_(name);
+        const canvas = document.createElement('canvas');
+        const size = 200;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        
+        const colors = [
+          ['#FF6B9D', '#C239B3'],
+          ['#4FACFE', '#00F2FE'],
+          ['#43E97B', '#38F9D7'],
+          ['#FA709A', '#FEE140'],
+          ['#30CFD0', '#330867'],
+          ['#A8EDEA', '#FED6E3'],
+        ];
+        
+        const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        const colorPair = colors[hash % colors.length];
+        
+        const gradient = ctx.createLinearGradient(0, 0, size, size);
+        gradient.addColorStop(0, colorPair[0]);
+        gradient.addColorStop(1, colorPair[1]);
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, size, size);
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.font = 'bold ' + (size * 0.4) + 'px Inter, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(initials, size / 2, size / 2);
+        
+        return canvas.toDataURL('image/png');
+      }
+      
+      function getInitials_(name) {
+        if (!name || typeof name !== 'string') return 'U';
+        const words = name.trim().split(/\s+/).filter(w => w.length > 0);
+        if (words.length === 0) return 'U';
+        if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
+        return (words[0][0] + words[1][0]).toUpperCase();
+      }
+
+      // ===== panels =====
+      function showPanel(which){
+        ['login','signup','forgot'].forEach(p=>{
+          document.getElementById('panel-'+p).classList.toggle('active', p===which);
+        });
+        document.getElementById('signupDots').style.display = (which === 'signup') ? 'flex' : 'none';
+
+        const subline = document.getElementById('subline');
+        if(which === 'signup') subline.textContent = 'Buat akun baru dengan verifikasi email (OTP).';
+        else if(which === 'forgot') subline.textContent = 'Reset password dengan kode OTP via email.';
+        else subline.textContent = 'Catat pemasukan, pengeluaran, dan tabungan secara rapi.';
+        hideToast();
+      }
+
+      // ===== signup wizard =====
+      let signupStep = 1;
+      function setSignupStep(step){
+        signupStep = step;
+        [1,2,3,4].forEach(i=>{
+          document.getElementById('su-step-'+i).style.display = (i===step) ? 'block' : 'none';
+        });
+        document.querySelectorAll('#signupDots .dot').forEach(d=>{
+          const i = Number(d.getAttribute('data-i'));
+          d.classList.toggle('active', i === step);
+        });
+      }
+
+      function startSignupWizard(){
+        showPanel('signup');
+        setSignupStep(1);
+        loadAvatarPresets();
+      }
+
+      function signupPrev(){
+        if (signupStep > 1) setSignupStep(signupStep - 1);
+      }
+
+      function signupNext(){
+        if (signupStep === 2){
+          const otp = String(document.getElementById('su-otp').value || '').trim();
+          if (!otp) return showToast('err', 'OTP kosong', 'Silakan isi OTP terlebih dahulu.');
+          return setSignupStep(3);
+        }
+        if (signupStep === 3){
+          const p1 = String(document.getElementById('su-password').value || '');
+          const p2 = String(document.getElementById('su-password2').value || '');
+          if (p1.length < 4) return showToast('err', 'Password lemah', 'Password minimal 4 karakter.');
+          if (p1 !== p2) return showToast('err', 'Password tidak sama', 'Confirm password harus sama.');
+          return setSignupStep(4);
+        }
+      }
+
+      function signupNextFromStep1(){
+        const username = String(document.getElementById('su-username').value || '').trim();
+        const nama = String(document.getElementById('su-nama').value || '').trim();
+        const email = String(document.getElementById('su-email').value || '').trim();
+
+        if (!username) return showToast('err', 'Data belum lengkap', 'Username wajib diisi.');
+        if (!nama) return showToast('err', 'Data belum lengkap', 'Nama lengkap wajib diisi.');
+        if (!email) return showToast('err', 'Data belum lengkap', 'Email wajib diisi.');
+
+        setBtnLoading('btnSu1', true);
+
+        google.script.run.withSuccessHandler(res=>{
+          setBtnLoading('btnSu1', false, !!(res && res.ok));
+          if(res && res.ok){
+            showToast('ok', 'OTP terkirim', 'Silakan cek email kamu. OTP berlaku 10 menit.');
+            setSignupStep(2);
+          } else {
+            showToast('err', 'Gagal kirim OTP', (res && res.message) || 'Terjadi kesalahan.');
+          }
+        }).apiSendOtp('signup', email);
+      }
+
+      function signupSubmit(){
+        const username = String(document.getElementById('su-username').value || '').trim();
+        const nama = String(document.getElementById('su-nama').value || '').trim();
+        const email = String(document.getElementById('su-email').value || '').trim();
+        const otp = String(document.getElementById('su-otp').value || '').trim();
+        const password = String(document.getElementById('su-password').value || '');
+        const theme = document.getElementById('su-theme').value;
+        const fotoUrl = String(document.getElementById('su-fotoUrl').value || '').trim();
+
+        if (!username || !nama || !email) return showToast('err', 'Data belum lengkap', 'Kembali ke step 1.');
+        if (!otp) return showToast('err', 'OTP kosong', 'Kembali ke step 2.');
+        if (password.length < 4) return showToast('err', 'Password lemah', 'Kembali ke step 3.');
+
+        setBtnLoading('btnCreate', true);
+
+        google.script.run.withSuccessHandler(res=>{
+          setBtnLoading('btnCreate', false, !!(res && res.ok));
+          if(res && res.ok){
+            showToast('ok', 'Akun dibuat', 'Silakan login menggunakan akun baru.');
+            showPanel('login');
+          } else {
+            showToast('err', 'Signup gagal', (res && res.message) || 'Terjadi kesalahan.');
+          }
+        }).apiSignup({ username, nama, email, otp, password, theme, fotoUrl });
+      }
+
+      // ===== avatar presets =====
+      function loadAvatarPresets(){
+        google.script.run.withSuccessHandler(res=>{
+          if(!res || !res.ok) return;
+
+          const grid = document.getElementById('presetGrid');
+          grid.innerHTML = '';
+
+          (res.presets || []).forEach((p)=>{
+            const el = document.createElement('div');
+            el.className = 'preset-item';
+            el.setAttribute('data-url', p.url);
+            
+            const img = document.createElement('img');
+            // Normalize URL untuk memastikan format yang benar
+            const normalizedPresetUrl = normalizeDriveUrl_(p.url);
+            img.src = normalizedPresetUrl;
+            img.alt = p.name;
+            
+            // Error handling
+            img.onerror = function() {
+              console.log('⚠️ Preset avatar gagal load:', p.name);
+              img.src = makeAvatarFallback_(p.name);
+            };
+            
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'nm';
+            nameDiv.textContent = p.name;
+            
+            el.appendChild(img);
+            el.appendChild(nameDiv);
+            el.onclick = () => selectPresetAvatar_(el);
+            grid.appendChild(el);
+          });
+        }).apiAvatarPresetList();
+      }
+
+      function selectPresetAvatar_(el){
+        const url = el.getAttribute('data-url') || '';
+        document.getElementById('su-fotoUrl').value = url;
+
+        document.querySelectorAll('.preset-item').forEach(x=>x.classList.remove('active'));
+        el.classList.add('active');
+
+        const preview = document.getElementById('su-photo-preview');
+        // Normalize URL before setting
+        const normalizedUrl = normalizeDriveUrl_(url);
+        preview.src = normalizedUrl;
+        preview.style.display = 'block';
+        
+        // Error handling untuk preview
+        preview.onerror = function() {
+          const nama = document.getElementById('su-nama').value || 'User';
+          preview.src = makeAvatarFallback_(nama);
+        };
+
+        document.getElementById('su-photo').value = '';
+        document.getElementById('su-photo-status').textContent = 'Preset dipilih ✓';
+      }
+
+      // ===== upload photo =====
+      function fileToBase64_(file){
+        return new Promise((resolve, reject)=>{
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || '').split(',')[1] || '');
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function uploadSignupPhoto(){
+        const fileInput = document.getElementById('su-photo');
+        const status = document.getElementById('su-photo-status');
+        const preview = document.getElementById('su-photo-preview');
+        const fotoUrlEl = document.getElementById('su-fotoUrl');
+
+        const f = fileInput.files && fileInput.files[0];
+        if (!f) return;
+
+        const maxBytes = 1.5 * 1024 * 1024;
+        if (f.size > maxBytes){
+          showToast('err', 'Foto terlalu besar', 'Maks 1.5MB.');
+          fileInput.value = '';
+          return;
+        }
+
+        status.textContent = 'Uploading...';
+
+        const base64 = await fileToBase64_(f);
+
+        google.script.run.withSuccessHandler(res=>{
+          if(res && res.ok){
+            fotoUrlEl.value = res.url || '';
+            status.textContent = 'Uploaded ✓';
+            preview.src = URL.createObjectURL(f);
+            preview.style.display = 'block';
+
+            document.querySelectorAll('.preset-item').forEach(x=>x.classList.remove('active'));
+            showToast('ok', 'Foto tersimpan', 'Foto profil berhasil diupload.');
+          } else {
+            status.textContent = '';
+            showToast('err', 'Upload gagal', (res && res.message) || 'Terjadi kesalahan.');
+          }
+        }).apiUploadProfilePhoto({
+          filename: f.name,
+          mimeType: f.type,
+          base64: base64
+        });
+      }
+
+      // ===== login/reset =====
+      function login(){
+        setBtnLoading('btnLogin', true);
+
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+        const rememberMe = document.getElementById('rememberMe').checked;
+
+        google.script.run.withSuccessHandler(res=>{
+          setBtnLoading('btnLogin', false, !!(res && res.ok));
+          if(res && res.ok){
+            // Save session token to storage
+            const sessionToken = res.sessionToken || '';
+            if (rememberMe) {
+              // Remember me: Save to localStorage (persistent across tabs/windows)
+              localStorage.setItem('sessionToken', sessionToken);
+              sessionStorage.removeItem('sessionToken');
+            } else {
+              // No remember me: Save to sessionStorage (cleared on tab close)
+              sessionStorage.setItem('sessionToken', sessionToken);
+              localStorage.removeItem('sessionToken');
+            }
+            
+            const googleEmail = res.googleEmail || 'N/A';
+            const msg = rememberMe 
+              ? `Login berhasil (sesi 7 hari) - ${googleEmail}` 
+              : `Login berhasil (sesi 2 jam) - ${googleEmail}`;
+            showToast('ok', msg, 'Mengalihkan ke dashboard...');
+            setTimeout(hardRedirectHome_, 250);
+          } else {
+            showToast('err', 'Login gagal', (res && res.message) || 'Terjadi kesalahan.');
+          }
+        }).apiLogin(username, password, rememberMe);
+      }
+
+      function sendOtp(purpose){
+        setBtnLoading('btnFpOtp', true);
+
+        const email = String(document.getElementById('fp-email').value || '').trim();
+        google.script.run.withSuccessHandler(res=>{
+          setBtnLoading('btnFpOtp', false, !!(res && res.ok));
+          if(res && res.ok){
+            showToast('ok', 'OTP terkirim', 'Silakan cek email kamu.');
+          } else {
+            showToast('err', 'Gagal kirim OTP', (res && res.message) || 'Terjadi kesalahan.');
+          }
+        }).apiSendOtp(purpose, email);
+      }
+
+      function resetPassword(){
+        setBtnLoading('btnReset', true);
+
+        const pass1 = document.getElementById('fp-newpass').value;
+        const pass2 = document.getElementById('fp-newpass2').value;
+        if(pass1 !== pass2){
+          setBtnLoading('btnReset', false, false);
+          return showToast('err', 'Reset gagal', 'Confirm password tidak sama.');
+        }
+
+        const payload = {
+          email: document.getElementById('fp-email').value,
+          otp: document.getElementById('fp-otp').value,
+          newPassword: pass1
+        };
+
+        google.script.run.withSuccessHandler(res=>{
+          setBtnLoading('btnReset', false, !!(res && res.ok));
+          if(res && res.ok){
+            showToast('ok', 'Berhasil', 'Password diubah. Silakan login.');
+            showPanel('login');
+          } else {
+            showToast('err', 'Reset gagal', (res && res.message) || 'Terjadi kesalahan.');
+          }
+        }).apiResetPassword(payload);
+      }
+
+      // ===== enter behavior =====
+      document.addEventListener('keydown', (e)=>{
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+
+        const loginActive = document.getElementById('panel-login').classList.contains('active');
+        const signupActive = document.getElementById('panel-signup').classList.contains('active');
+        const forgotActive = document.getElementById('panel-forgot').classList.contains('active');
+
+        if (loginActive) return login();
+        if (forgotActive) return resetPassword();
+        if (signupActive) {
+          if (signupStep === 1) return signupNextFromStep1();
+          if (signupStep === 2) return signupNext();
+          if (signupStep === 3) return signupNext();
+          if (signupStep === 4) return signupSubmit();
+        }
+      });
+
+      // init
+      loadThemeList();
+      loadRandomTheme();
     </script>
   </body>
 </html>

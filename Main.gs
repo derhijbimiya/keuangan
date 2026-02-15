@@ -1,4 +1,71 @@
 /**
+ * API: Upload struck file to Google Drive (per user folder)
+ * payload: { filename, mimeType, base64 }
+ * returns: { ok, url, message }
+ */
+function apiUploadStruck(payload) {
+  try {
+    if (!payload || !payload.base64 || !payload.filename) {
+      Logger.log('[apiUploadStruck] Payload tidak valid: ' + JSON.stringify(payload));
+      return { ok: false, message: 'File tidak valid.' };
+    }
+    const MASTER_FOLDER_ID = '1QpD1L_igJOdLwfGSbQ58Zm8AhSMk7zfB';
+    const username = getSessionUser_ && getSessionUser_();
+    if (!username) {
+      Logger.log('[apiUploadStruck] User tidak ditemukan!');
+      return { ok: false, message: 'User tidak ditemukan.' };
+    }
+    Logger.log('[apiUploadStruck] Username: ' + username);
+    let userFolder;
+    try {
+      userFolder = getOrCreateUserDriveFolder_(MASTER_FOLDER_ID, username);
+      Logger.log('[apiUploadStruck] User folder ready: ' + userFolder.getName());
+    } catch (e) {
+      Logger.log('[apiUploadStruck] ERROR getOrCreateUserDriveFolder_: ' + e.toString());
+      return { ok: false, message: 'Gagal akses folder Drive: ' + e.message };
+    }
+    const ext = payload.filename.includes('.') ? payload.filename.substring(payload.filename.lastIndexOf('.')) : '';
+    const baseName = payload.filename.replace(/\.[^/.]+$/, '');
+    const finalName = baseName + '_' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss') + ext;
+    let file;
+    try {
+      const blob = Utilities.newBlob(Utilities.base64Decode(payload.base64), payload.mimeType, payload.filename);
+      file = userFolder.createFile(blob).setName(finalName);
+      Logger.log('[apiUploadStruck] File created: ' + file.getName() + ' | ' + file.getUrl());
+    } catch (e) {
+      Logger.log('[apiUploadStruck] ERROR createFile: ' + e.toString());
+      return { ok: false, message: 'Gagal upload file: ' + e.message };
+    }
+    return { ok: true, url: file.getUrl(), message: '✅ File struck berhasil diupload.' };
+  } catch (err) {
+    Logger.log('[apiUploadStruck] ERROR umum: ' + err.toString());
+    return { ok: false, message: '❌ Error upload struck: ' + err.message };
+  }
+}
+
+/**
+ * Helper: Get or create user folder in Drive
+ * @param {string} parentFolderId
+ * @param {string} username
+ * @returns {Folder}
+ */
+function getOrCreateUserDriveFolder_(parentFolderId, username) {
+  try {
+    const parent = DriveApp.getFolderById(parentFolderId);
+    const folders = parent.getFoldersByName(username);
+    if (folders.hasNext()) {
+      Logger.log('[getOrCreateUserDriveFolder_] Folder sudah ada: ' + username);
+      return folders.next();
+    } else {
+      Logger.log('[getOrCreateUserDriveFolder_] Membuat folder baru: ' + username);
+      return parent.createFolder(username);
+    }
+  } catch (e) {
+    Logger.log('[getOrCreateUserDriveFolder_] ERROR: ' + e.toString());
+    throw e;
+  }
+}
+/**
  * Main.gs (UPDATED)
  * - apiDashboardHeader(): ambil nama lengkap + foto url dari Users
  * - apiDashboardSummary(rangeKey): ringkasan untuk range waktu (all/12m/3m/1m/custom)
@@ -32,7 +99,7 @@ function ensureUserTx1Sheet_(ss, username) {
   sh = ss.insertSheet(sheetName);
 
   const header = [
-    'no', 'tanggal', 'pengeluaran', 'pemasukan', 'tabungan', 'saldo_rekening', 'id_transaksi', 'keterangan'
+    'no', 'tanggal', 'pengeluaran', 'pemasukan', 'tabungan', 'saldo_rekening', 'id_transaksi', 'keterangan', 'struck'
   ];
   sh.getRange(1, 1, 1, header.length).setValues([header]);
   sh.setFrozenRows(1);
@@ -403,7 +470,7 @@ function apiDashboardSummary(rangeKey) {
     total_tabungan: tot.total_tabungan,
     pemasukan: sum1.income,
     pengeluaran: sum1.expense,
-    tabungan_masuk: sum2.savingIn,   // FIXED: dari TX2 bukan TX1 (untuk hindari double count)
+    tabungan_masuk: sum1.savingIn,   // Sekarang hanya dari TX1 kolom E
     tabungan_keluar: sum2.savingOut
   };
 }
@@ -445,7 +512,7 @@ function apiDashboardSummaryCustom(startDate, endDate) {
     total_tabungan: tot.total_tabungan,
     pemasukan: sum1.income,
     pengeluaran: sum1.expense,
-    tabungan_masuk: sum2.savingIn,   // FIXED: dari TX2 bukan TX1
+    tabungan_masuk: sum1.savingIn,   // Sekarang hanya dari TX1 kolom E
     tabungan_keluar: sum2.savingOut
   };
 }
@@ -618,6 +685,7 @@ function apiAddTxRekening(payload) {
   const jenis = String(payload?.jenis || '').trim().toLowerCase();
   const nominal = Number(payload?.nominal || 0) || 0;
   const keterangan = String(payload?.keterangan || '').trim();
+  const struck = String(payload?.struck || '').trim(); // link struck
 
   if (!tanggalStr) return { ok: false, message: 'Tanggal wajib diisi.' };
   const tanggal = new Date(tanggalStr + 'T00:00:00');
@@ -641,7 +709,7 @@ function apiAddTxRekening(payload) {
 
   // Simpan ke TX1
   const nextRow = sh.getLastRow() + 1;
-  const row = [no, tanggal, pengeluaran, pemasukan, tabungan, nextSaldo, idTransaksi, keterangan];
+  const row = [no, tanggal, pengeluaran, pemasukan, tabungan, nextSaldo, idTransaksi, keterangan, struck];
   sh.getRange(nextRow, 1, 1, row.length).setValues([row]);
 
   // PENTING: Jika tabungan, LANGSUNG simpan juga ke TX2 (INLINE)
@@ -1014,4 +1082,25 @@ function apiGetTableData() {
     rekening: rekeningData,
     tabungan: tabunganData
   };
+}
+
+/**
+ * Mengembalikan HTML dashboard utama (untuk sidebar/dialog)
+ */
+function getDashboardPageHtml() {
+  return HtmlService.createHtmlOutputFromFile('dashboardpage').getContent();
+}
+
+/**
+ * Mengembalikan URL Web App utama (untuk redirect dari dialog/sidebar)
+ */
+function getScriptUrl() {
+  return ScriptApp.getService().getUrl();
+}
+
+/**
+ * Fungsi backend untuk tombol kembali (home/dashboard)
+ */
+function getHomeUrl() {
+  return ScriptApp.getService().getUrl();
 }

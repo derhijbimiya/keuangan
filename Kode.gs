@@ -21,7 +21,6 @@ function doGet(e) {
     // logged-in routes
     if (page === '' || page === 'home' || page === 'dashboard' || page === 'transaksi') {
       ensureUserTxSheet(username);
-
       const t = HtmlService.createTemplateFromFile('dashboardpage');
       t.initialData = {
         username: username,
@@ -31,12 +30,30 @@ function doGet(e) {
       };
       return t.evaluate()
         .setTitle('Dashboard')
-        .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no') // FIX: Kunci agar tidak kecil di HP
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no')
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    } else if (page === 'app2') {
+      // Keuangan 1
+      const html = HtmlService.createHtmlOutputFromFile('App2page')
+        .setTitle('Keuangan 1')
+        .setWidth(420)
+        .setHeight(600)
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      return html;
+    } else if (page === 'tentang') {
+      // Tentang
+      const html = HtmlService.createHtmlOutputFromFile('tentangpage')
+        .setTitle('Tentang Aplikasi')
+        .setWidth(420)
+        .setHeight(600)
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      return html;
     }
 
+    // Default fallback: dashboard
     ensureUserTxSheet(username);
-
     const t = HtmlService.createTemplateFromFile('dashboardpage');
     t.initialData = {
       username: username,
@@ -46,7 +63,7 @@ function doGet(e) {
     };
     return t.evaluate()
       .setTitle('Dashboard')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no') // FIX: Kunci agar tidak kecil di HP
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
   } catch (err) {

@@ -1,6 +1,81 @@
+<script>
+function isInGoogleSheetsDialog() {
+  // Deteksi dialog/sidebar Google Sheets (bukan web app)
+  // google.script.run & google.script.host hanya ada di dialog/sidebar
+  // window.top !== window (iframe)
+  var isDialog = false;
+  try {
+    isDialog = (
+      typeof google !== 'undefined' &&
+      google.script &&
+      google.script.run &&
+      typeof google.script.host !== 'undefined' &&
+      window.top !== window
+    );
+  } catch (e) {
+    isDialog = false;
+  }
+  if (isDialog) {
+    console.log('[DEBUG] Detected Google Sheets dialog/sidebar context.');
+  } else {
+    console.log('[DEBUG] Detected Web App context.');
+  }
+  return isDialog;
+}
+function openApp2Page() {
+  toggleMenu(false); // Tutup menu modal
+  if (isInGoogleSheetsDialog()) {
+    console.log('[DEBUG] openApp2Page: call google.script.run.getApp2PageHtml()');
+    google.script.run.withSuccessHandler(function(html) {
+      showDynamicPage(html);
+    }).getApp2PageHtml();
+  } else {
+    console.log('[DEBUG] openApp2Page: redirect to ?page=app2');
+    setTimeout(function() {
+      window.location.search = '?page=app2';
+    }, 150);
+  }
+}
+function openTentangPage() {
+  toggleMenu(false); // Tutup menu modal
+  if (isInGoogleSheetsDialog()) {
+    console.log('[DEBUG] openTentangPage: call google.script.run.getTentangPageHtml()');
+    google.script.run.withSuccessHandler(function(html) {
+      showDynamicPage(html);
+    }).getTentangPageHtml();
+  } else {
+    console.log('[DEBUG] openTentangPage: redirect to ?page=tentang');
+    setTimeout(function() {
+      window.location.search = '?page=tentang';
+    }, 150);
+  }
+}
+</script>
+<script>
+// Fungsi untuk mengganti konten utama dengan HTML baru (untuk sidebar/dialog)
+function showDynamicPage(html) {
+  // Pastikan ada elemen utama untuk ganti konten, misal id="main-content" atau body
+  var container = document.getElementById('main-content');
+  if (!container) {
+    // fallback: ganti seluruh body
+    document.body.innerHTML = html;
+  } else {
+    container.innerHTML = html;
+  }
+}
+</script>
 <!doctype html>
 <html>
   <head>
+        <script>
+        function goHome(){
+          if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run.withSuccessHandler(url => top.location.href = url).getHomeUrl();
+          } else {
+            window.location.href = '/';
+          }
+        }
+        </script>
     <base target="_top">
     <?!= include('stylesdashboard'); ?>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -153,6 +228,7 @@
                 <div class="report-row">
                   <div class="report-k">Ke Tabungan</div>
                   <div class="report-v" id="dKeTabungan">-</div>
+                  <div class="report-note"></div>
                 </div>
               </div>
 
@@ -160,13 +236,14 @@
                 <div class="report-title">TABUNGAN</div>
 
                 <div class="report-row">
-                  <div class="report-k">Tabungan Masuk</div>
+                  <div class="report-k">Tabungan Masuk (manual + rekening)</div>
                   <div class="report-v" id="dTabMasuk">-</div>
                 </div>
 
                 <div class="report-row">
                   <div class="report-k">Tabungan Keluar</div>
                   <div class="report-v" id="dTabKeluar">-</div>
+                  <div class="report-note"></div>
                 </div>
               </div>
             </div>
@@ -299,8 +376,77 @@
               <input id="txrKet" class="text-lg" placeholder="Contoh: beli pulsa / gaji / pindah tabungan">
             </div>
 
+            <div class="mini-label" style="margin-top:12px;">UPLOAD STRUCK (opsional)</div>
+            <div class="field field-lg">
+              <div class="file-upload-wrapper">
+                <input id="txrStruck" class="file-upload-input" type="file" accept="image/*,application/pdf" style="display:none;">
+                <label for="txrStruck" class="file-upload-label">
+                  <span class="file-upload-icon">📎</span>
+                  <span id="struckUploadText" class="file-upload-text">Pilih file bukti...</span>
+                </label>
+              </div>
+              <style>
+                .file-upload-wrapper {
+                  display: flex;
+                  align-items: center;
+                  gap: 10px;
+                  width: 100%;
+                }
+                .file-upload-label {
+                  display: flex;
+                  align-items: center;
+                  gap: 8px;
+                  background: var(--inputBg);
+                  color: var(--inputText);
+                  border-radius: 8px;
+                  padding: 10px 18px;
+                  cursor: pointer;
+                  font-weight: 600;
+                  font-size: 1em;
+                  border: 1.5px solid var(--inputBorder);
+                  transition: border 0.18s, background 0.18s;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                  min-width: 180px;
+                  user-select: none;
+                }
+                .file-upload-label:hover {
+                  border: 1.5px solid var(--primary);
+                  background: var(--card2);
+                  color: var(--primary);
+                }
+                .file-upload-icon {
+                  font-size: 1.25em;
+                  margin-right: 4px;
+                }
+                .file-upload-text {
+                  color: var(--inputText);
+                  font-size: 1em;
+                  font-weight: 600;
+                  letter-spacing: 0.01em;
+                }
+              </style>
+              <script>
+              // Ganti teks label saat file dipilih
+              document.addEventListener('DOMContentLoaded', function() {
+                var struckInput = document.getElementById('txrStruck');
+                var struckText = document.getElementById('struckUploadText');
+                if(struckInput && struckText) {
+                  struckInput.addEventListener('change', function() {
+                    if (struckInput.files && struckInput.files[0]) {
+                      struckText.textContent = struckInput.files[0].name;
+                    } else {
+                      struckText.textContent = 'Pilih file bukti...';
+                    }
+                  });
+                }
+              });
+              </script>
+              <div id="txrStruckPreview" style="margin-top:8px;"></div>
+            </div>
+
             <div class="xnote">
-              Tips: cukup pilih salah satu jenis, lalu isi nominal. Keterangan boleh kosong.
+              Tips: cukup pilih salah satu jenis, lalu isi nominal. Keterangan boleh kosong.<br>
+              Upload struck: file bukti transaksi (foto/pdf) akan disimpan ke Google Drive dan link otomatis tercatat.
             </div>
           </div>
 
@@ -397,6 +543,12 @@
           <div class="menu-actions">
             <button class="btn secondary full" onclick="openProfileFromMenu()">
               <span class="btn-label"><span>UBAH PROFIL</span></span>
+            </button>
+            <button class="btn secondary full" onclick="openApp2Page()">
+              <span class="btn-label"><span>KEUANGAN 1</span></span>
+            </button>
+            <button class="btn secondary full" onclick="openTentangPage()">
+              <span class="btn-label"><span>TENTANG</span></span>
             </button>
             <button id="btnLogout" class="btn secondary full" onclick="logout()">
               <span class="btn-label"><span>LOGOUT</span></span>
@@ -1180,32 +1332,74 @@
         const tanggal = String(document.getElementById('txrTanggal').value || '').trim();
         const nominal = _parseNominal_(document.getElementById('txrNominal').value);
         const keterangan = String(document.getElementById('txrKet').value || '').trim();
+        const struckInput = document.getElementById('txrStruck');
+        const struckFile = struckInput && struckInput.files && struckInput.files[0] ? struckInput.files[0] : null;
 
         if (!tanggal) return showModalToast('txRekToastContainer', 'Tanggal wajib diisi.', 'warning');
         if (!(nominal > 0)) return showModalToast('txRekToastContainer', 'Nominal harus lebih dari 0.', 'warning');
 
         setBtnLoading('btnSaveTxR', true);
 
-        google.script.run.withSuccessHandler(res=>{
-          setBtnLoading('btnSaveTxR', false);
-
-          if(res && res.ok){
-            showModalToast('txRekToastContainer', res.message || 'Transaksi berhasil disimpan.', 'success');
-            setTimeout(() => {
-              toggleTxRekeningModal_(false);
-              resetFormTxRekening_();
-              reloadAll();
-            }, 1500);
-          } else {
-            showModalToast('txRekToastContainer', (res && res.message) || 'Gagal simpan transaksi.', 'error');
-          }
-        }).apiAddTxRekening({ tanggal, jenis: TX_JENIS_, nominal, keterangan });
+        // Jika ada struck file, upload dulu ke Drive
+        if (struckFile) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const base64 = String(e.target.result || '').split(',')[1] || '';
+            google.script.run.withSuccessHandler(function(resUpload) {
+              // Log hasil upload struck ke console
+              console.log('[Struck Upload]', resUpload);
+              if (!resUpload.ok) {
+                setBtnLoading('btnSaveTxR', false);
+                showModalToast('txRekToastContainer', resUpload.message || 'Gagal upload struck.', 'error');
+                console.error('[Struck Upload ERROR]', resUpload.message || resUpload);
+                return; // Hentikan proses jika upload gagal
+              }
+              // Jika upload sukses, lanjut simpan transaksi
+              google.script.run.withSuccessHandler(res=>{
+                setBtnLoading('btnSaveTxR', false);
+                console.log('[Transaksi Simpan]', res);
+                if(res && res.ok){
+                  showModalToast('txRekToastContainer', res.message || 'Transaksi berhasil disimpan.', 'success');
+                  console.log('[Transaksi SUCCESS]', res.message || res);
+                  setTimeout(() => {
+                    toggleTxRekeningModal_(false);
+                    resetFormTxRekening_();
+                    reloadAll();
+                  }, 1500);
+                } else {
+                  showModalToast('txRekToastContainer', (res && res.message) || 'Gagal simpan transaksi.', 'error');
+                  console.error('[Transaksi ERROR]', (res && res.message) || res);
+                }
+              }).apiAddTxRekening({ tanggal, jenis: TX_JENIS_, nominal, keterangan, struck: resUpload.url });
+            }).apiUploadStruck({ filename: struckFile.name, mimeType: struckFile.type, base64 });
+          };
+          reader.readAsDataURL(struckFile);
+        } else {
+          google.script.run.withSuccessHandler(res=>{
+            setBtnLoading('btnSaveTxR', false);
+            console.log('[Transaksi Simpan]', res);
+            if(res && res.ok){
+              showModalToast('txRekToastContainer', res.message || 'Transaksi berhasil disimpan.', 'success');
+              console.log('[Transaksi SUCCESS]', res.message || res);
+              setTimeout(() => {
+                toggleTxRekeningModal_(false);
+                resetFormTxRekening_();
+                reloadAll();
+              }, 1500);
+            } else {
+              showModalToast('txRekToastContainer', (res && res.message) || 'Gagal simpan transaksi.', 'error');
+              console.error('[Transaksi ERROR]', (res && res.message) || res);
+            }
+          }).apiAddTxRekening({ tanggal, jenis: TX_JENIS_, nominal, keterangan });
+        }
       }
 
       function resetFormTxRekening_(){
         document.getElementById('txrTanggal').value = '';
         document.getElementById('txrNominal').value = '';
         document.getElementById('txrKet').value = '';
+        if(document.getElementById('txrStruck')) document.getElementById('txrStruck').value = '';
+        if(document.getElementById('txrStruckPreview')) document.getElementById('txrStruckPreview').innerHTML = '';
         // Set tanggal ke hari ini
         const now = new Date();
         const y = now.getFullYear();
@@ -1214,6 +1408,31 @@
         document.getElementById('txrTanggal').value = `${y}-${m}-${d}`;
         // Clear toast
         clearModalToast('txRekToastContainer');
+            // Preview struck file
+            document.addEventListener('DOMContentLoaded', function() {
+              const struckInput = document.getElementById('txrStruck');
+              if (struckInput) {
+                struckInput.addEventListener('change', function() {
+                  const previewDiv = document.getElementById('txrStruckPreview');
+                  previewDiv.innerHTML = '';
+                  const file = struckInput.files && struckInput.files[0] ? struckInput.files[0] : null;
+                  if (!file) return;
+                  const ext = file.name.split('.').pop().toLowerCase();
+                  const reader = new FileReader();
+                  reader.onload = function(e) {
+                    if (file.type.startsWith('image/')) {
+                      previewDiv.innerHTML = `<img src="${e.target.result}" style="max-width:120px;max-height:120px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-top:4px;">`;
+                    } else if (file.type === 'application/pdf') {
+                      previewDiv.innerHTML = `<span style="color:var(--primary);font-weight:bold;">PDF dipilih: ${file.name}</span>`;
+                    } else {
+                      previewDiv.innerHTML = `<span style="color:var(--warn);">File dipilih: ${file.name}</span>`;
+                    }
+                  };
+                  if (file.type.startsWith('image/')) reader.readAsDataURL(file);
+                  else reader.readAsArrayBuffer(file);
+                });
+              }
+            });
       }
 
       // UPDATED: save tabungan (tambah/pakai)

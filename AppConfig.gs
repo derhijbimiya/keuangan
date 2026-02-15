@@ -1,3 +1,9 @@
+
+// Fungsi lama tidak dipakai dari HTML/Sidebar, karena getUi() error di context ini
+// Fungsi baru untuk dipanggil dari google.script.run
+function getTentangPageHtml() {
+  return HtmlService.createHtmlOutputFromFile('tentangpage').getContent();
+}
 /**
  * AppConfig.gs
  * - Tambah: helper normalisasi URL Google Drive untuk <img>

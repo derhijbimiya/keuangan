@@ -95,10 +95,12 @@ Sheet transaksi rekening utama (otomatis per user, contoh: TX1_eki).
 | F | saldo_rekening | Saldo rekening setelah transaksi |
 | G | id_transaksi | Kode unik transaksi (TX...) |
 | H | keterangan | Catatan/keterangan transaksi |
+| I | struck | Link/file bukti transaksi (upload struck ke Google Drive) |
 
 **Fungsi:**
 - Mencatat semua transaksi rekening (pemasukan, pengeluaran, transfer ke tabungan)
 - Saldo rekening dihitung otomatis
+- Upload struck: file bukti transaksi dapat di-upload dan link file otomatis tercatat di kolom struck
 
 ---
 
