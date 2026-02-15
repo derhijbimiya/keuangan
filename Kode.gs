@@ -14,13 +14,12 @@ function doGet(e) {
       t.appUrl = ScriptApp.getService().getUrl();
       return t.evaluate()
         .setTitle('Financial Applications V2')
-        .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no') // FIX: Kunci agar tidak kecil di HP
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     }
 
     // logged-in routes
     if (page === '' || page === 'home' || page === 'dashboard' || page === 'transaksi') {
-      // Ensure new sheets exist (TX1_, TX2_, TOT_) after spreadsheet restructure
       ensureUserTxSheet(username);
 
       const t = HtmlService.createTemplateFromFile('dashboardpage');
@@ -32,11 +31,10 @@ function doGet(e) {
       };
       return t.evaluate()
         .setTitle('Dashboard')
-        .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no') // FIX: Kunci agar tidak kecil di HP
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     }
 
-    // unknown -> fallback dashboard
     ensureUserTxSheet(username);
 
     const t = HtmlService.createTemplateFromFile('dashboardpage');
@@ -48,7 +46,7 @@ function doGet(e) {
     };
     return t.evaluate()
       .setTitle('Dashboard')
-      .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no') // FIX: Kunci agar tidak kecil di HP
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
   } catch (err) {

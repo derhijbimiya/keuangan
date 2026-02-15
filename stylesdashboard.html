@@ -1,5 +1,53 @@
+
 <style>
-  /* Minimal fallback variables - akan di-override oleh theme */
+  /* Profile Modal Tab Buttons */
+  body.dashboard .profile-tab-nav {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+    justify-content: center;
+  }
+  body.dashboard .profile-tab-btn {
+    flex: 1 1 0;
+    padding: 0 18px;
+    height: 42px;
+    border-radius: 14px;
+    border: 1.5px solid rgba(255,255,255,0.13);
+    background: linear-gradient(90deg, var(--card), var(--card2));
+    color: var(--text);
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s, border 0.18s, box-shadow 0.18s;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.10);
+    outline: none;
+    position: relative;
+  }
+  body.dashboard .profile-tab-btn:not(.active):hover {
+    background: linear-gradient(90deg, var(--primary), var(--primary2));
+    color: var(--btnText);
+    border-color: var(--primary);
+    z-index: 1;
+  }
+  body.dashboard .profile-tab-btn.active {
+    background: linear-gradient(90deg, var(--primary), var(--primary2));
+    color: var(--btnText);
+    border-color: var(--primary);
+    box-shadow: 0 4px 18px 0 rgba(255,79,216,0.10), 0 1.5px 8px 0 rgba(34,211,238,0.10);
+    z-index: 2;
+  }
+  @media (max-width: 560px) {
+    body.dashboard .profile-tab-btn {
+      font-size: 12px;
+      height: 36px;
+      padding: 0 8px;
+    }
+  }
+</style>
+
+<style>
+  /* Minimal fallback variables */
   :root{
     --bg: #0a0c18;
     --text: rgba(255,255,255,0.92);
@@ -87,24 +135,126 @@
     z-index: 10;
   }
 
+
+@media (max-width:560px){
+    body.dashboard .topbar-row {
+      position: relative;
+    }
+    body.dashboard .topbar-row::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 1.5px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.22) 50%, rgba(255,255,255,0.08) 100%);
+      border-radius: 2px;
+      opacity: 0;
+      pointer-events: none;
+      animation: fadeDivider 0.7s ease-in forwards;
+      z-index: 2;
+      margin: 0 4px;
+    }
+    @keyframes fadeDivider {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  body.dashboard .topbar {
+    top: 8px;
+    padding: 7px 7px 5px 7px;
+    border-radius: 12px;
+    min-height: unset;
+    justify-content: flex-start;
+  }
+  body.dashboard .topbar-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "brand clock" 
+      "profile menu";
+    gap: 4px 8px;
+    align-items: center;
+  }
+  body.dashboard .brand       {
+    grid-area: brand;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    justify-content: flex-start;
+    align-self: start;
+    justify-self: start;
+  }
+  body.dashboard .clockpill   { grid-area: clock; order: 0; justify-self: start; display: flex; flex-direction: column; align-items: flex-start; padding: 0; margin-left: 0; margin-right: 0; gap: 0; min-width: 0; background: none; border: none; box-shadow: none;}
+  body.dashboard .clockpill .t { font-size: 13px; font-weight: 950; line-height: 1.1;}
+  body.dashboard .clockpill .d { display: block; font-size: 11px; color: rgba(255,255,255,0.78); margin: 0; line-height: 1.1;}
+  body.dashboard .userchip    { grid-area: profile; max-width: 90px; min-width: 0; flex: 0 0 auto; padding: 4px 6px; margin: 15px 0 0 0;}
+  body.dashboard .userchip .nm { font-size: 10px; }
+  body.dashboard .top-actions { grid-area: menu; justify-self: end; gap: 4px; display: flex; align-items: center; margin: 0;}
+  body.dashboard .iconbtn.menu { width: 32px; height: 32px; margin-left: 0; }
+  body.dashboard .brand-mark { width: 32px; height: 32px; border-radius: 10px; }
+  body.dashboard .brand-title { font-size: 8px; }
+  /* Responsive compact adjustment for dashboard */
+  body.dashboard .overview{ grid-template-columns: 1fr; margin-top: 6px; }
+  body.dashboard .menu-actions{ grid-template-columns: 1fr; }
+  body.dashboard .profile-actions{ grid-template-columns: 1fr; }
+  body.dashboard .control-label{ font-size: 9px; }
+  body.dashboard .mode-btn{ width: 32px; height: 30px; font-size: 14px; }
+  body.dashboard .date-compact{ font-size: 11px; width: 110px; }
+  body.dashboard .filter-table-wrapper{ flex-direction: column; align-items: stretch; }
+  body.dashboard .filter-table-input, body.dashboard .filter-table-select, body.dashboard .filter-table-search{ width: 100%; }
+  body.dashboard .table-toolbar{ flex-direction: column; align-items: stretch; }
+  body.dashboard .table-toolbar-left, body.dashboard .table-toolbar-right{ justify-content: space-between; }
+  body.dashboard .data-table{ font-size: 11px; }
+  body.dashboard .data-table th, body.dashboard .data-table td{ padding: 10px 8px; font-size: 10px; }
+  body.dashboard .td-keterangan{ max-width: 150px; }
+  body.dashboard .table-pagination{ flex-wrap: wrap; gap: 10px; }
+  body.dashboard .btn-page{ font-size: 11px; padding: 0 12px; }
+  body.dashboard .page-info{ font-size: 11px; }
+}
+
   body.dashboard .topbar-row{
-    display:grid;
-    grid-template-columns: auto 1fr auto;
-    align-items:center;
-    gap: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0 16px;
+    box-sizing: border-box;
+    gap: 0;
+  }
+  body.dashboard .brand {
+    order: 1;
+    flex: 0 0 auto;
+  }
+  body.dashboard .userchip {
+    order: 2;
+    flex: 0 0 auto;
+    margin: 0 24px;
+  }
+  body.dashboard .clockpill {
+    order: 3;
+    flex: 0 0 auto;
+    margin: 0 24px;
+  }
+  body.dashboard .top-actions {
+    order: 4;
+    flex: 0 0 auto;
+    margin-left: 0;
   }
 
   body.dashboard .brand{
     display:flex;
     align-items:center;
-    gap: 10px;
+    gap: 18px;
     min-width: 0;
   }
 
   body.dashboard .brand-mark{
-    width: 42px;
-    height: 42px;
-    border-radius: 16px;
+    width: 52px;
+    height: 52px;
+    border-radius: 18px;
     background:
       radial-gradient(14px 14px at 30% 30%, rgba(255,255,255,0.22), transparent 60%),
       linear-gradient(135deg, rgba(255,79,216,0.85), rgba(34,211,238,0.85));
@@ -134,15 +284,15 @@
   body.dashboard .brand-title{
     font-weight: 950;
     letter-spacing: -0.01em;
-    font-size: 16px;
-    line-height: 1.05;
+    font-size: 20px;
+    line-height: 1.08;
     white-space: nowrap;
     overflow:hidden;
     text-overflow: ellipsis;
   }
 
   body.dashboard .brand-sub{
-    font-size: 11px;
+    font-size: 13px;
     color: rgba(255,255,255,0.72);
     font-weight: 850;
     letter-spacing: 0.12em;
@@ -189,17 +339,18 @@
     display:flex;
     align-items:center;
     gap: 10px;
-    padding: 8px 10px;
+    padding: 8px 16px;
     border-radius: 999px;
     border: 1px solid rgba(255,255,255,0.14);
     background: rgba(255,255,255,0.06);
     backdrop-filter: blur(10px);
-    max-width: 280px;
+    min-width: 220px;
+    max-width: 340px;
   }
 
   body.dashboard .userchip img{
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     border-radius: 999px;
     border: 1px solid rgba(255,255,255,0.14);
     object-fit: cover;
@@ -208,10 +359,10 @@
   }
 
   body.dashboard .userchip .nm{
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 950;
-    overflow:hidden;
-    text-overflow: ellipsis;
+    overflow: visible;
+    text-overflow: unset;
     white-space: nowrap;
   }
 
@@ -469,15 +620,13 @@
     box-shadow: 0 2px 8px rgba(255,79,216,0.30);
   }
 
-  body.dashboard .filter-box{
-    display: none;
-    align-items: center;
-    gap: 6px;
-  }
-
-  body.dashboard .filter-box.active{
+  body.dashboard .filter-row{
     display: flex;
+    align-items: center;
+    gap: 10px;
+    box-sizing: border-box;
   }
+  /* Hapus duplikasi dan baris tidak lengkap */
 
   body.dashboard .date-compact{
     height: 34px;
@@ -513,25 +662,28 @@
   }
 
   body.dashboard .btn-clear-mini{
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,79,79,0.20);
-    color: rgba(255,255,255,0.85);
+    border: 1.5px solid rgba(255,79,79,0.18);
+    background: rgba(255,79,79,0.13);
+    color: #ff3a58;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
-    font-size: 12px;
-    font-weight: 900;
+    transition: all 0.18s cubic-bezier(.4,0,.2,1);
+    padding: 0;
+    box-shadow: none;
+    outline: none;
+    font-size: 0;
+    margin-left: 4px;
   }
 
   body.dashboard .btn-clear-mini:hover{
-    background: rgba(255,79,79,0.35);
-    border-color: rgba(255,79,79,0.50);
-    transform: scale(1.08);
+    background: rgba(255,79,79,0.22);
+    border-color: #ff3a58;
+    transform: scale(1.09);
   }
 
   /* ====== OLD FILTER STYLES (kept for compatibility) ====== */
@@ -541,7 +693,6 @@
     gap: 10px;
     align-items:center;
   }
-
   body.dashboard .filter-mode{
     display:inline-flex;
     align-items:center;
@@ -1746,91 +1897,112 @@
     }
   }
 
-  @media (max-width: 560px){
-    body.dashboard{ padding: 10px; }
+ @media (max-width:560px) { 
+   body.dashboard { padding: 10px; } 
 
-    body.dashboard .topbar{ top: 8px; }
-    body.dashboard .topbar-row{ gap: 10px; }
-
-    body.dashboard .brand-mark{ width: 40px; height: 40px; border-radius: 15px; }
-    body.dashboard .brand-title{ font-size: 15px; }
-    body.dashboard .userchip{ max-width: 180px; }
-    body.dashboard .clockpill{
-      padding: 9px 12px;
-      gap: 8px;
-      justify-self: center;
-    }
-    body.dashboard .clockpill .t{ font-size: 16px; }
-    body.dashboard .clockpill .d{ display:none; }
-
-    body.dashboard .overview{ grid-template-columns: 1fr; }
-    body.dashboard .menu-actions{ grid-template-columns: 1fr; }
-    body.dashboard .profile-actions{ grid-template-columns: 1fr; }
-
-    body.dashboard .control-label{
-      font-size: 9px;
-    }
-    
-    body.dashboard .mode-btn{
-      width: 32px;
-      height: 30px;
-      font-size: 14px;
-    }
-
-    body.dashboard .date-compact{
-      font-size: 11px;
-      width: 110px;
-    }
-
-    body.dashboard .filter-table-wrapper{
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    body.dashboard .filter-table-input,
-    body.dashboard .filter-table-select,
-    body.dashboard .filter-table-search{
-      width: 100%;
-    }
-
-    body.dashboard .table-toolbar{
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    body.dashboard .table-toolbar-left,
-    body.dashboard .table-toolbar-right{
-      justify-content: space-between;
-    }
-
-    body.dashboard .data-table{
-      font-size: 11px;
-    }
-
-    body.dashboard .data-table th,
-    body.dashboard .data-table td{
-      padding: 10px 8px;
-      font-size: 10px;
-    }
-
-    body.dashboard .td-keterangan{
-      max-width: 150px;
-    }
-
-    body.dashboard .table-pagination{
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    body.dashboard .btn-page{
-      font-size: 11px;
-      padding: 0 12px;
-    }
-
-    body.dashboard .page-info{
-      font-size: 11px;
-    }
-  }
+   body.dashboard .topbar { 
+     top: 8px; 
+     padding: 7px 7px 5px 7px; 
+     border-radius: 12px; 
+     min-height: unset; 
+     justify-content: flex-start; 
+   } 
+   body.dashboard .topbar-row { 
+     display: grid; 
+     grid-template-columns: 1fr auto; 
+     grid-template-rows: auto auto; 
+     grid-template-areas: 
+       "brand clock" 
+       "profile menu"; 
+     gap: 10px 8px; 
+     align-items: center; 
+     width: 100%; 
+     padding: 0; 
+     box-sizing: border-box; 
+   } 
+   body.dashboard .brand { 
+     grid-area: brand; 
+     display: flex; 
+     flex-direction: row; 
+     align-items: center; 
+     gap: 8; 
+     margin: 0; 
+     justify-content: flex-start; 
+     align-self: start; 
+     justify-self: start; 
+   } 
+   body.dashboard .clockpill { 
+     grid-area: clock; 
+     order: 0; 
+     justify-self: end; 
+     display: flex; 
+     flex-direction: column; 
+     align-items: flex-end; 
+     padding: 0; 
+     margin-left: 0; 
+     margin-right: 0; 
+     gap: 0; 
+     min-width: 0; 
+     background: none; 
+     border: none; 
+     box-shadow: none; 
+   } 
+   body.dashboard .clockpill .t { 
+     font-size: 13px; 
+     font-weight: 950; 
+     line-height: 1.1; 
+   } 
+   body.dashboard .clockpill .d { 
+     display: block; 
+     font-size: 11px; 
+     color: rgba(255,255,255,0.78); 
+     margin: 0; 
+     line-height: 1.1; 
+   } 
+   body.dashboard .userchip { 
+     grid-area: profile;
+     justify-self: start;
+     margin-left: 0; 
+     max-width: 190px; 
+     min-width: 0; 
+     flex: 0 0 auto; 
+     padding: 4px 6px; 
+     margin: 0; 
+   } 
+   body.dashboard .userchip .nm { font-size: 11px; } 
+   body.dashboard .top-actions { 
+     grid-area: menu; 
+     justify-self: end; 
+     gap: 4px; 
+     display: flex; 
+     align-items: center; 
+     margin: 0; 
+   } 
+   body.dashboard .iconbtn.menu { width: 32px; height: 32px; margin-left: 0; } 
+   body.dashboard .brand-mark { width: 28px; height: 28px; border-radius: 10px; } 
+  body.dashboard .brand-title { font-size: 11px; }
+   /* Responsive compact adjustment for dashboard */ 
+   body.dashboard .overview { grid-template-columns: 1fr; margin-top: 6px; } 
+   body.dashboard .menu-actions { grid-template-columns: 1fr; } 
+   body.dashboard .profile-actions { grid-template-columns: 1fr; } 
+   body.dashboard .control-label { font-size: 9px; } 
+   body.dashboard .mode-btn { width: 32px; height: 30px; font-size: 14px; } 
+   body.dashboard .date-compact { font-size: 11px; width: 110px; } 
+   body.dashboard .filter-table-wrapper { flex-direction: column; align-items: stretch; } 
+   body.dashboard .filter-table-input, 
+   body.dashboard .filter-table-select, 
+   body.dashboard .filter-table-search { width: 100%; } 
+   body.dashboard .table-toolbar { flex-direction: column; align-items: stretch; } 
+   body.dashboard .table-toolbar-left, 
+   body.dashboard .table-toolbar-right { justify-content: space-between; } 
+   body.dashboard .data-table { font-size: 11px; } 
+   body.dashboard .data-table th, 
+   body.dashboard .data-table td { padding: 10px 8px; font-size: 10px; } 
+   body.dashboard .td-keterangan { max-width: 150px; } 
+   body.dashboard .table-pagination { flex-wrap: wrap; gap: 10px; } 
+   body.dashboard .btn-page { font-size: 11px; padding: 0 12px; } 
+   body.dashboard .page-info { font-size: 11px; } 
+  } 
 
   /* =========================================================
      TOAST NOTIFICATION

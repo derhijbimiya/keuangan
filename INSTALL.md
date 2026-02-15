@@ -1,3 +1,27 @@
+
+## ⚠️ Paling Penting: Peringatan "Aplikasi Belum Diverifikasi" Google
+
+Jika Anda pertama kali mengakses aplikasi, Google akan menampilkan peringatan:
+
+> **Google belum memverifikasi aplikasi ini**
+
+Ini adalah mekanisme keamanan Google untuk aplikasi yang belum diverifikasi. Anda tetap bisa melanjutkan dengan langkah berikut:
+
+### Cara Melewati Peringatan "Aplikasi Belum Diverifikasi"
+
+1. Saat muncul halaman peringatan, klik **Lanjutan** di bagian bawah.
+2. Klik link **Buka [Nama Aplikasi] (tidak aman)**.
+3. Lanjutkan proses login seperti biasa.
+
+**Catatan:**
+- Peringatan ini normal jika aplikasi belum diverifikasi Google.
+- Data Anda tetap aman selama Anda mempercayai aplikasi ini.
+- Jika ragu, silakan hubungi admin: wanschool04@gmail.com
+
+---
+
+Selamat menggunakan aplikasi Financial Applications V2!
+
 # Panduan Instalasi & Deploy Financial Applications V2
 
 ## 1. Pengantar
@@ -37,10 +61,4 @@ Aplikasi ini adalah sistem manajemen keuangan pribadi multi-user berbasis Google
 - Cek CSP (Content Security Policy) jika ada masalah gambar.
 
 ## 3. Troubleshooting
-- Jika ada error login, cek sheet Users dan Apps Script sudah benar.
-- Jika foto profil tidak muncul, cek permission file di Google Drive.
-- Untuk bantuan lebih lanjut, hubungi: wanschool04@gmail.com
 
----
-
-Selamat menggunakan aplikasi Financial Applications V2!
