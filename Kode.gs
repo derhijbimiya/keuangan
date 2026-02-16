@@ -1,3 +1,6 @@
+function getAppUrl() {
+  return ScriptApp.getService().getUrl();
+}
 /**
  * Code.gs (FIX blank/white page after login/logout) + URL helpers + apiGetAppUrl
  */
@@ -33,14 +36,12 @@ function doGet(e) {
         .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no')
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     } else if (page === 'app2') {
-      // Keuangan 1
-      const html = HtmlService.createHtmlOutputFromFile('App2page')
+      // Keuangan 1 sebagai web app (pakai templating agar CSS ter-load)
+      const t = HtmlService.createTemplateFromFile('App2page');
+      return t.evaluate()
         .setTitle('Keuangan 1')
-        .setWidth(420)
-        .setHeight(600)
         .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no')
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-      return html;
     } else if (page === 'tentang') {
       // Tentang
       const html = HtmlService.createHtmlOutputFromFile('tentangpage')

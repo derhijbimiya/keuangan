@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base target="_top">
+  <title>Transaksi Baru</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    :root{
+      --bg:linear-gradient(135deg,#0f0c29 0%,#302b63 50%,#24243e 100%);
+      --accent:linear-gradient(135deg,#ff6b6b 0%,#ff5252 100%);
+      --accentSolid:#ff6b6b;
+      --accentBorder:rgba(255,107,107,.30);
+      --panel:rgba(30,30,46,.95);
+      --text:#fff;
+      --dim:rgba(255,255,255,.70);
+      --shadow:0 20px 60px rgba(0,0,0,.80);
+      --t:all .3s cubic-bezier(.4,0,.2,1);
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+      background:var(--bg);
+      min-height:100vh;
+      overflow-x:hidden;
+      color:var(--text);
+    }
+    body::before{
+      content:'';
+      position:fixed;top:-50%;left:-50%;
+      width:200%;height:200%;
+      background:radial-gradient(circle,rgba(255,107,107,.1) 1px,transparent 1px);
+      background-size:50px 50px;
+      animation:bgMove 20s linear infinite;
+      z-index:-1;
+    }
+    @keyframes bgMove{0%{transform:translate(0,0)}100%{transform:translate(50px,50px)}}
+
+    /* Navbar */
+    .navbar{
+      background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);
+      border-bottom:2px solid rgba(255,107,107,.30);
+      box-shadow:0 10px 30px rgba(0,0,0,.50);
+      padding:14px 14px !important;
+    }
+    .navbar-brand{
+      font-size:16px;font-weight:900;color:#fff !important;
+      letter-spacing:.7px;text-shadow:0 0 20px rgba(255,107,107,.45);
+      margin:0;
+    }
+    .btn-back{
+      background:rgba(255,107,107,.18);
+      border:1.5px solid rgba(255,107,107,.60);
+      color:#ffb3b3;
+      padding:8px 12px;
+      border-radius:12px;
+      font-weight:900;
+      transition:var(--t);
+      cursor:pointer;
+      font-size:11px;
+      white-space:nowrap;
+    }
+    .btn-back:hover{background:rgba(255,107,107,.28);transform:translateY(-2px);color:#fff}
+
+    /* Layout */
+    .page{padding:18px 12px 26px;max-width:720px;margin:0 auto}
+    .form-container{
+      background:var(--panel);
+      border:1px solid rgba(255,107,107,.20);
+      border-radius:18px;
+      box-shadow:var(--shadow),0 0 40px rgba(255,107,107,.16),inset 0 1px 0 rgba(255,255,255,.08);
+      padding:18px 14px;
+      backdrop-filter:blur(10px);
+    }
+    .form-title{text-align:center;margin-bottom:14px;font-size:18px;font-weight:900;letter-spacing:.3px;text-shadow:0 0 18px rgba(255,107,107,.25)}
+
+    .form-group{margin-bottom:14px}
+    label{
+      display:block;margin-bottom:8px;
+      font-weight:900;color:rgba(255,255,255,.78);
+      font-size:11px;text-transform:uppercase;letter-spacing:.7px;
+    }
+
+    .form-control{
+      background:rgba(255,255,255,.05) !important;
+      border:2px solid var(--accentBorder) !important;
+      color:#fff !important;
+      padding:12px 12px !important;
+      border-radius:14px !important;
+      transition:var(--t);
+      backdrop-filter:blur(5px);
+      font-size:13px;
+    }
+    .form-control::placeholder{color:rgba(255,255,255,.30)}
+    .form-control:focus{
+      border-color:rgba(255,107,107,.70) !important;
+      background:rgba(255,107,107,.10) !important;
+      box-shadow:0 0 22px rgba(255,107,107,.25) !important;
+      outline:none;
+      transform:translateY(-1px);
+    }
+    .form-control:disabled{
+      background:rgba(255,255,255,.03) !important;
+      color:rgba(255,255,255,.45) !important;
+      cursor:not-allowed;
+      opacity:.75;
+    }
+
+    /* Date input */
+    input[type="date"].form-control{
+      color-scheme:dark;
+      font-size:14px !important;
+      padding:13px 12px !important;
+      min-height:48px;
+    }
+
+    /* Custom dropdown (no white popup) */
+    .dd{position:relative}
+    .dd-btn{
+      width:100%;
+      text-align:left;
+      background:rgba(255,255,255,.05);
+      border:2px solid var(--accentBorder);
+      color:#fff;
+      padding:12px 40px 12px 12px;
+      border-radius:14px;
+      font-weight:800;
+      transition:var(--t);
+      min-height:48px;
+    }
+    .dd-btn:focus{outline:none;box-shadow:0 0 22px rgba(255,107,107,.20);border-color:rgba(255,107,107,.70)}
+    .dd-btn[aria-disabled="true"]{opacity:.75;cursor:not-allowed}
+    .dd-caret{
+      position:absolute;right:14px;top:50%;transform:translateY(-50%);
+      color:rgba(255,255,255,.65);font-weight:900;pointer-events:none;
+    }
+    .dd-panel{
+      position:absolute;left:0;right:0;top:calc(100% + 8px);
+      background:linear-gradient(135deg,rgba(24,20,46,.98) 0%,rgba(30,25,55,.95) 100%);
+      border:1px solid rgba(255,107,107,.28);
+      border-radius:14px;
+      box-shadow:0 18px 50px rgba(0,0,0,.55);
+      overflow:hidden;
+      display:none;
+      z-index:20;
+    }
+    .dd.open .dd-panel{display:block}
+    .dd-item{
+      width:100%;
+      text-align:left;
+      padding:12px 12px;
+      background:transparent;
+      color:rgba(255,255,255,.86);
+      border:0;
+      border-bottom:1px solid rgba(255,107,107,.12);
+      font-weight:900;
+      cursor:pointer;
+    }
+    .dd-item:hover{background:rgba(255,107,107,.12);color:#fff}
+    .dd-item:last-child{border-bottom:0}
+    .dd-item.muted{color:rgba(255,255,255,.45);cursor:default}
+    .dd-item.muted:hover{background:transparent}
+
+    /* Buttons */
+    .button-group{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+    .btn-submit{
+      background:var(--accent);
+      border:0;color:#fff;font-weight:900;
+      padding:13px 12px;border-radius:14px;cursor:pointer;width:100%;
+      text-transform:uppercase;letter-spacing:.8px;
+      box-shadow:0 12px 32px rgba(255,107,107,.35);
+      transition:var(--t);font-size:12px;
+      min-height:48px;
+    }
+    .btn-submit:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 18px 44px rgba(255,107,107,.55)}
+    .btn-submit:disabled{opacity:.55;cursor:not-allowed}
+
+    .btn-reset{
+      background:rgba(76,175,80,.18);
+      border:1.5px solid rgba(76,175,80,.60);
+      color:#9be7ae;font-weight:900;
+      padding:13px 12px;border-radius:14px;cursor:pointer;width:100%;
+      text-transform:uppercase;letter-spacing:.8px;
+      transition:var(--t);font-size:12px;
+      min-height:48px;
+    }
+    .btn-reset:hover{background:rgba(76,175,80,.26);transform:translateY(-2px);color:#fff}
+
+    .info-card{
+      background:rgba(255,107,107,.10);
+      border:1px solid rgba(255,107,107,.28);
+      border-radius:14px;
+      padding:12px;
+      margin-bottom:14px;
+      font-size:12px;
+      color:rgba(255,255,255,.85);
+    }
+    .info-card strong{color:#ffb3b3}
+
+    .tipe-transaksi{display:flex;gap:10px}
+    .tipe-btn{
+      flex:1;padding:12px;
+      border:2px solid rgba(255,107,107,.30);
+      background:rgba(255,255,255,.05);
+      color:rgba(255,255,255,.75);
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:900;
+      transition:var(--t);
+      text-transform:uppercase;
+      letter-spacing:.5px;
+      font-size:11px;
+      min-height:48px;
+    }
+    .tipe-btn:hover:not(:disabled){border-color:rgba(255,107,107,.60);background:rgba(255,107,107,.10);color:#fff}
+    .tipe-btn.active{background:var(--accent);border-color:rgba(255,107,107,.85);color:#fff;box-shadow:0 10px 22px rgba(255,107,107,.25)}
+    .tipe-btn:disabled{opacity:.55;cursor:not-allowed}
+
+    .input-group-text{
+      background:rgba(255,107,107,.10) !important;
+      border:2px solid rgba(255,107,107,.30) !important;
+      color:#fff !important;
+      border-radius:14px 0 0 14px !important;
+      padding:12px 12px !important;
+      font-weight:900;
+      min-height:48px;
+      display:flex;align-items:center;
+    }
+    .input-group .form-control{border-left:none !important;border-radius:0 14px 14px 0 !important;min-height:48px}
+
+    .msg{margin-top:14px;padding:12px 14px;border-radius:14px;display:none;font-weight:900;font-size:12px;word-break:break-word}
+    .msg-success{display:block;background:rgba(76,175,80,.18);color:#78d28a;border:1px solid rgba(76,175,80,.45)}
+    .msg-error{display:block;background:rgba(255,107,107,.18);color:#ff9a9a;border:1px solid rgba(255,107,107,.45)}
+    .msg-loading{display:block;background:rgba(33,150,243,.16);color:#8ac7ff;border:1px solid rgba(33,150,243,.45)}
+
+    .keranjang-list{background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.20);border-radius:14px;padding:12px;margin-bottom:14px}
+    .card-list{display:flex;flex-wrap:wrap;gap:8px}
+    .file-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,107,107,.28);border-radius:12px;padding:10px;flex:1 1 120px;min-width:120px;position:relative;font-size:11px;transition:var(--t)}
+    .file-card:hover{background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.55)}
+    .file-name{color:rgba(255,255,255,.92);font-weight:900;margin-bottom:4px;word-break:break-word}
+    .file-size{color:rgba(255,255,255,.55);font-size:10px}
+    .file-card .hapus{position:absolute;top:6px;right:6px;background:#ff6b6b;color:#fff;border:0;border-radius:8px;padding:2px 8px;cursor:pointer;font-size:10px;font-weight:900;transition:var(--t)}
+    .file-card .hapus:hover{background:#ff5252}
+
+    .progres-upload{margin-top:14px;padding:12px;background:rgba(33,150,243,.12);border:1px solid rgba(33,150,243,.30);border-radius:14px;display:none}
+    .progress-bar-custom{width:100%;height:18px;background:rgba(255,255,255,.10);border-radius:10px;overflow:hidden;margin-top:8px}
+    .progress-fill{height:100%;background:linear-gradient(90deg,#2196f3 70%,#64b5f6 100%);width:0%;transition:width .3s ease;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:900}
+
+    /* HP bigger */
+    @media (max-width: 576px){
+      .navbar{padding:16px 14px !important}
+      .navbar-brand{font-size:18px}
+      .btn-back{font-size:13px;padding:10px 14px;border-radius:14px}
+
+      label{font-size:12px}
+      .form-control,input[type="date"].form-control{
+        font-size:15px !important;
+        padding:14px 14px !important;
+        border-radius:16px !important;
+        min-height:54px;
+      }
+      .dd-btn{min-height:54px;font-size:15px;border-radius:16px;padding:14px 44px 14px 14px}
+      .dd-caret{right:16px}
+      .tipe-btn,.btn-submit,.btn-reset{min-height:54px;border-radius:16px;font-size:12px}
+      .input-group-text{min-height:54px;border-radius:16px 0 0 16px !important}
+      .input-group .form-control{min-height:54px;border-radius:0 16px 16px 0 !important}
+    }
+
+    @media (min-width:768px){
+      .navbar{padding:18px 22px !important}
+      .navbar-brand{font-size:18px}
+      .page{padding:28px 18px 40px;max-width:820px}
+      .form-container{padding:24px 22px;border-radius:22px}
+      .form-title{font-size:22px;margin-bottom:16px}
+      .form-group{margin-bottom:16px}
+      label{font-size:12px}
+      input[type="date"].form-control{font-size:15px !important;min-height:52px}
+      .dd-btn{min-height:52px}
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar navbar-dark">
+    <span class="navbar-brand">📝 Transaksi Baru</span>
+    <button class="btn-back" onclick="goHome()">← Kembali</button>
+  </nav>
+
+  <main class="page">
+    <section class="form-container">
+      <div class="form-title">✨ Input Transaksi Baru</div>
+
+      <div class="info-card">
+        <strong>💡 Tips:</strong> Pilih tipe transaksi, isi data, dan upload struk jika ada
+      </div>
+
+      <!-- ✅ custom dropdown (no white popup) -->
+      <div class="form-group">
+        <label>📁 Tujuan Sheet</label>
+
+        <div class="dd" id="sheetDD">
+          <button type="button" class="dd-btn" id="sheetDDBtn" aria-expanded="false">
+            -- Pilih Sheet --
+          </button>
+          <span class="dd-caret">▾</span>
+
+          <div class="dd-panel" role="listbox" aria-label="Tujuan Sheet">
+            <button type="button" class="dd-item muted" data-value="">-- Pilih Sheet --</button>
+            <button type="button" class="dd-item" data-value="Uang Saya">💰 Uang Saya</button>
+            <button type="button" class="dd-item" data-value="Uang Bendahara">👤 Uang Bendahara</button>
+            <button type="button" class="dd-item" data-value="Uang Admin">⚙️ Uang Admin</button>
+          </div>
+        </div>
+
+        <!-- hidden real value, dipakai oleh JS logic -->
+        <input type="hidden" id="sheet" value="">
+      </div>
+
+      <div class="form-group">
+        <label>📅 Tanggal</label>
+        <input type="date" class="form-control" id="tgl" required disabled>
+      </div>
+
+      <div class="form-group">
+        <label>📝 Keterangan</label>
+        <input type="text" class="form-control" id="ket" placeholder="Contoh: Pembelian alat tulis" required disabled>
+      </div>
+
+      <div id="formNormal">
+        <div class="form-group">
+          <label>💸 Tipe Transaksi</label>
+          <div class="tipe-transaksi">
+            <button type="button" class="tipe-btn active" data-tipe="masuk" disabled>💵 Pemasukan</button>
+            <button type="button" class="tipe-btn" data-tipe="keluar" disabled>💸 Pengeluaran</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="nominal">💰 Jumlah (Rp)</label>
+          <div class="input-group">
+            <span class="input-group-text">Rp</span>
+            <input type="number" class="form-control" id="nominal" placeholder="0" min="0" required disabled>
+          </div>
+        </div>
+      </div>
+
+      <div id="formAdmin" style="display:none;">
+        <div class="form-group">
+          <label for="potongan">💰 Potongan (Rp)</label>
+          <div class="input-group">
+            <span class="input-group-text">Rp</span>
+            <input type="number" class="form-control" id="potongan" placeholder="0" min="0" required disabled>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>📝 Detail (Opsional)</label>
+          <input type="text" class="form-control" id="detail" placeholder="Detail potongan" disabled>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>📸 Upload Struk/Bukti (Opsional)</label>
+        <input type="file" class="form-control" id="files" multiple accept="image/*,.pdf" disabled>
+        <small style="color: rgba(255, 255, 255, 0.5); margin-top: 6px; display: block;">
+          Format: JPG, PNG, PDF. Maks 10MB per file
+        </small>
+      </div>
+
+      <div id="keranjang" class="keranjang-list" style="display:none;">
+        <label style="margin-bottom:8px;">📂 File yang dipilih:</label>
+        <div id="keranjang-list" class="card-list"></div>
+      </div>
+
+      <div class="button-group">
+        <button type="button" class="btn-submit" id="saveBtn" disabled>💾 SIMPAN</button>
+        <button type="button" class="btn-reset" id="resetBtn">🔄 RESET</button>
+      </div>
+
+      <div id="msg" class="msg"></div>
+
+      <div id="progres" class="progres-upload">
+        <div style="color: rgba(255, 255, 255, 0.8); font-size: 12px;">Mengupload struk...</div>
+        <div class="progress-bar-custom">
+          <div id="progres-fill" class="progress-fill" style="width:0%;">0%</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => document.querySelectorAll(s);
+
+    const state = { tipeTransaksi: "masuk", keranjangFile: [], isAdminSheet: false };
+
+    const el = {
+      sheetHidden: $("#sheet"),
+      tgl: $("#tgl"),
+      ket: $("#ket"),
+      files: $("#files"),
+      saveBtn: $("#saveBtn"),
+      resetBtn: $("#resetBtn"),
+      formNormal: $("#formNormal"),
+      formAdmin: $("#formAdmin"),
+      nominal: $("#nominal"),
+      potongan: $("#potongan"),
+      detail: $("#detail"),
+      keranjang: $("#keranjang"),
+      keranjangList: $("#keranjang-list"),
+      msg: $("#msg"),
+      progres: $("#progres"),
+      progresFill: $("#progres-fill"),
+      tipeBtns: $$(".tipe-btn"),
+
+      dd: $("#sheetDD"),
+      ddBtn: $("#sheetDDBtn"),
+      ddPanel: $("#sheetDD .dd-panel"),
+    };
+
+    function showMsg(text, type){
+      el.msg.textContent = text;
+      el.msg.className = "msg msg-" + type;
+      if(type === "error") setTimeout(() => el.msg.className = "msg", 4000);
+    }
+
+    function setDisabled(keys, disabled){
+      keys.forEach(k => { if(el[k]) el[k].disabled = disabled; });
+    }
+
+    function setTodayDate(){
+      const d = new Date();
+      const iso = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString().slice(0,10);
+      el.tgl.value = iso;
+    }
+
+    function updateNominalLabel(){
+      const label = document.querySelector('label[for="nominal"]');
+      label.innerHTML = state.tipeTransaksi === "masuk"
+        ? "💵 Jumlah Pemasukan (Rp)"
+        : "💸 Jumlah Pengeluaran (Rp)";
+    }
+
+    function selectTipe(tipe){
+      state.tipeTransaksi = tipe;
+      el.tipeBtns.forEach(b => b.classList.remove("active"));
+      document.querySelector(`[data-tipe="${tipe}"]`).classList.add("active");
+      updateNominalLabel();
+    }
+
+    function getSheetValue(){ return el.sheetHidden.value || ""; }
+
+    function enableForm(){
+      const sheet = getSheetValue();
+      if(!sheet){ resetForm(true); return; }
+
+      state.isAdminSheet = (sheet === "Uang Admin");
+      setDisabled(["tgl","ket","files","saveBtn"], false);
+      setTodayDate();
+
+      if(state.isAdminSheet){
+        el.formNormal.style.display = "none";
+        el.formAdmin.style.display = "block";
+        setDisabled(["potongan","detail"], false);
+        setDisabled(["nominal"], true);
+        el.tipeBtns.forEach(b => b.disabled = true);
+      }else{
+        el.formNormal.style.display = "block";
+        el.formAdmin.style.display = "none";
+        setDisabled(["nominal"], false);
+        setDisabled(["potongan","detail"], true);
+        el.tipeBtns.forEach(b => b.disabled = false);
+        selectTipe(state.tipeTransaksi || "masuk");
+      }
+    }
+
+    function updateKeranjangList(){
+      if(state.keranjangFile.length === 0){
+        el.keranjang.style.display = "none";
+        el.keranjangList.innerHTML = "";
+        return;
+      }
+      el.keranjang.style.display = "block";
+      el.keranjangList.innerHTML = state.keranjangFile.map((file, idx) => {
+        const icon = file.type.startsWith("image/") ? "🖼️" : "📄";
+        const size = (file.size / 1024).toFixed(1);
+        return `
+          <div class="file-card">
+            <div style="margin-bottom:4px;">${icon}</div>
+            <div class="file-name">${file.name}</div>
+            <div class="file-size">${size} KB</div>
+            <button type="button" class="hapus" data-idx="${idx}">✖</button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function resetForm(keepSheet=false){
+      if(!keepSheet) setSheet("");
+      el.tgl.value = "";
+      el.ket.value = "";
+      el.nominal.value = "";
+      el.potongan.value = "";
+      el.detail.value = "";
+      el.files.value = "";
+      state.keranjangFile = [];
+      updateKeranjangList();
+
+      state.tipeTransaksi = "masuk";
+      el.tipeBtns.forEach(b => b.classList.remove("active"));
+      document.querySelector('[data-tipe="masuk"]').classList.add("active");
+      updateNominalLabel();
+
+      setDisabled(["tgl","ket","files","saveBtn"], true);
+      el.tipeBtns.forEach(b => b.disabled = true);
+      setDisabled(["nominal","potongan","detail"], true);
+
+      state.isAdminSheet = false;
+      el.formNormal.style.display = "block";
+      el.formAdmin.style.display = "none";
+
+      el.progres.style.display = "none";
+      el.progresFill.style.width = "0%";
+      el.progresFill.textContent = "0%";
+
+      el.msg.className = "msg";
+      if(!keepSheet){
+        showMsg("✨ Formulir direset", "success");
+        setTimeout(() => el.msg.className = "msg", 2000);
+      }
+    }
+
+    function validate(){
+      const sheet = getSheetValue();
+      const tgl = el.tgl.value;
+      const ket = el.ket.value.trim();
+
+      if(!sheet){ openSheetDD(); return {ok:false,msg:"❌ Silakan pilih sheet terlebih dahulu"}; }
+      if(!tgl){ el.tgl.focus(); return {ok:false,msg:"❌ Tanggal harus diisi"}; }
+      if(!ket){ el.ket.focus(); return {ok:false,msg:"❌ Keterangan harus diisi"}; }
+
+      if(state.isAdminSheet){
+        const pot = parseFloat(el.potongan.value) || 0;
+        if(pot === 0){ el.potongan.focus(); return {ok:false,msg:"❌ Potongan tidak boleh 0"}; }
+      }else{
+        const nom = parseFloat(el.nominal.value) || 0;
+        if(nom === 0){ el.nominal.focus(); return {ok:false,msg:"❌ Nominal tidak boleh 0"}; }
+      }
+      return {ok:true};
+    }
+
+    function buildPayload(){
+      const sheet = getSheetValue();
+      const ket = el.ket.value.trim();
+      const tgl = el.tgl.value;
+
+      if(state.isAdminSheet){
+        return { sheet, tgl, ket, potongan: parseFloat(el.potongan.value) || 0, detail: el.detail.value.trim(), isAdmin:true };
+      }
+      const nominal = parseFloat(el.nominal.value) || 0;
+      return {
+        sheet, tgl, ket,
+        masuk: state.tipeTransaksi === "masuk" ? nominal : "",
+        keluar: state.tipeTransaksi === "keluar" ? nominal : "",
+        isAdmin:false
+      };
+    }
+
+    function fmtID(value){ return Math.round(value).toLocaleString("id-ID"); }
+
+    function readFilesBase64(files){
+      const readers = [...files].map(file => new Promise((resolve) => {
+        const r = new FileReader();
+        r.onload = (e) => resolve({ name:file.name, type:file.type, data:e.target.result.split(",")[1] });
+        r.readAsDataURL(file);
+      }));
+      return Promise.all(readers);
+    }
+
+    function simpan(){
+      const v = validate();
+      if(!v.ok){ showMsg(v.msg, "error"); return; }
+
+      const payload = buildPayload();
+      el.saveBtn.disabled = true;
+      showMsg("⏳ Menyimpan transaksi...", "loading");
+
+      if(state.keranjangFile.length === 0){
+        google.script.run
+          .withSuccessHandler(res => {
+            if(res && res.status){
+              showMsg("✅ " + res.msg + (res.saldoBaru ? (" Saldo: Rp" + fmtID(res.saldoBaru)) : ""), "success");
+              setTimeout(() => { resetForm(true); enableForm(); }, 1200);
+            }else{
+              showMsg(res?.msg || "❌ Gagal menyimpan data", "error");
+              el.saveBtn.disabled = false;
+            }
+          })
+          .withFailureHandler(err => { showMsg("❌ Terjadi kesalahan: " + err, "error"); el.saveBtn.disabled = false; })
+          .saveTransaction(payload);
+        return;
+      }
+
+      el.progres.style.display = "block";
+      el.progresFill.style.width = "10%";
+      el.progresFill.textContent = "10%";
+
+      readFilesBase64(state.keranjangFile).then(fileDataArray => {
+        el.progresFill.style.width = "50%";
+        el.progresFill.textContent = "50%";
+
+        google.script.run
+          .withSuccessHandler(transRes => {
+            if(!transRes || !transRes.status){
+              showMsg("❌ Gagal menyimpan transaksi: " + (transRes?.msg || ""), "error");
+              el.saveBtn.disabled = false;
+              el.progres.style.display = "none";
+              return;
+            }
+
+            const rowNum = transRes.row;
+            const sheetName = payload.sheet;
+
+            google.script.run
+              .withSuccessHandler(uploadRes => {
+                el.progresFill.style.width = "100%";
+                el.progresFill.textContent = "100%";
+
+                if(uploadRes && uploadRes.status){
+                  showMsg("✅ Transaksi & struk berhasil disimpan!" + (transRes.saldoBaru ? (" Saldo: Rp" + fmtID(transRes.saldoBaru)) : ""), "success");
+                  setTimeout(() => { resetForm(true); enableForm(); el.progres.style.display = "none"; }, 1200);
+                }else{
+                  showMsg("⚠️ Transaksi disimpan, tapi struk gagal: " + (uploadRes?.msg || ""), "error");
+                  el.saveBtn.disabled = false;
+                  setTimeout(() => el.progres.style.display = "none", 1500);
+                }
+              })
+              .withFailureHandler(err => {
+                showMsg("❌ Error upload struk: " + err, "error");
+                el.saveBtn.disabled = false;
+                el.progres.style.display = "none";
+              })
+              .handleUploadByRow(fileDataArray, payload.ket, sheetName, rowNum, "folder");
+          })
+          .withFailureHandler(err => {
+            showMsg("❌ Error saat menyimpan transaksi: " + err, "error");
+            el.saveBtn.disabled = false;
+            el.progres.style.display = "none";
+          })
+          .saveTransaction(payload);
+      });
+    }
+
+    function goHome(){ google.script.run.withSuccessHandler(url => top.location.href = url).getHomeUrl(); }
+
+    /* ===== Custom dropdown logic ===== */
+    function openSheetDD(){
+      el.dd.classList.add("open");
+      el.ddBtn.setAttribute("aria-expanded","true");
+    }
+    function closeSheetDD(){
+      el.dd.classList.remove("open");
+      el.ddBtn.setAttribute("aria-expanded","false");
+    }
+    function setSheet(value){
+      el.sheetHidden.value = value;
+
+      const label = value
+        ? (value === "Uang Saya" ? "💰 Uang Saya" :
+           value === "Uang Bendahara" ? "👤 Uang Bendahara" :
+           value === "Uang Admin" ? "⚙️ Uang Admin" : value)
+        : "-- Pilih Sheet --";
+
+      el.ddBtn.textContent = label;
+      closeSheetDD();
+      enableForm();
+    }
+
+    el.ddBtn.addEventListener("click", () => {
+      if(el.dd.classList.contains("open")) closeSheetDD();
+      else openSheetDD();
+    });
+
+    el.ddPanel.addEventListener("click", (e) => {
+      const item = e.target.closest(".dd-item");
+      if(!item || item.classList.contains("muted")) return;
+      setSheet(item.dataset.value || "");
+    });
+
+    // close on outside click
+    document.addEventListener("click", (e) => {
+      if(!el.dd.contains(e.target)) closeSheetDD();
+    });
+
+    // close on escape
+    document.addEventListener("keydown", (e) => {
+      if(e.key === "Escape") closeSheetDD();
+    });
+
+    /* ===== Events ===== */
+    window.addEventListener("load", () => {
+      google.script.run.withSuccessHandler(user => { if(!user) top.location.href = '?'; }).getSession();
+      resetForm(true);
+      enableForm();
+    });
+
+    el.saveBtn.addEventListener("click", simpan);
+    el.resetBtn.addEventListener("click", () => resetForm(false));
+    el.tipeBtns.forEach(btn => btn.addEventListener("click", () => selectTipe(btn.dataset.tipe)));
+
+    el.files.addEventListener("change", function(){
+      const files = [...this.files];
+      for(const file of files){
+        const ext = file.name.toLowerCase();
+        const isValid = file.type.startsWith("image/") || file.type === "application/pdf" || ext.endsWith(".pdf");
+        if(!isValid){ showMsg(`❌ ${file.name} - Format tidak didukung`, "error"); continue; }
+        if(file.size > 10 * 1024 * 1024){ showMsg(`❌ ${file.name} - File terlalu besar (max 10MB)`, "error"); continue; }
+        if(!state.keranjangFile.some(f => f.name === file.name && f.size === file.size)) state.keranjangFile.push(file);
+      }
+      this.value = "";
+      updateKeranjangList();
+    });
+
+    el.keranjangList.addEventListener("click", (e) => {
+      const btn = e.target.closest("button.hapus");
+      if(!btn) return;
+      const idx = parseInt(btn.dataset.idx, 10);
+      state.keranjangFile.splice(idx, 1);
+      updateKeranjangList();
+      showMsg("📂 File dihapus", "loading");
+      setTimeout(() => el.msg.className = "msg", 900);
+    });
+
+    ["nominal","potongan"].forEach(id => {
+      document.getElementById(id).addEventListener("keypress", (e) => {
+        if(e.key === "Enter"){ e.preventDefault(); simpan(); }
+      });
+    });
+  </script>
+</body>
+</html>

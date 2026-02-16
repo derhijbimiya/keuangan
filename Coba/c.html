@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base target="_top">
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    :root{
+      --primary-gradient:linear-gradient(135deg,#0f0c29 0%,#302b63 50%,#24243e 100%);
+      --accent-gradient:linear-gradient(135deg,#ff6b6b 0%,#ff5252 100%);
+      --accent:#ff6b6b;
+      --accent-border:rgba(255,107,107,.4);
+      --accent-soft:rgba(255,107,107,.15);
+      --text:#fff;
+      --text-dim:rgba(255,255,255,.65);
+      --panel:rgba(30,30,46,.95);
+      --panel2:linear-gradient(135deg,rgba(24,20,46,.98) 0%,rgba(30,25,55,.95) 100%);
+      --shadow:0 20px 60px rgba(0,0,0,.80);
+      --t:all .3s cubic-bezier(.4,0,.2,1);
+
+      --green-soft:rgba(52,168,83,.15);
+      --green-border:rgba(76,175,80,.40);
+      --green-text:#81c784;
+    }
+
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+      background:var(--primary-gradient);
+      color:var(--text);
+      min-height:100vh;
+      overflow-x:hidden;
+    }
+    body::before{
+      content:'';
+      position:fixed;top:-50%;left:-50%;
+      width:200%;height:200%;
+      background:radial-gradient(circle,rgba(255,107,107,.1) 1px,transparent 1px);
+      background-size:50px 50px;
+      animation:bgMove 20s linear infinite;
+      z-index:-1;
+    }
+    @keyframes bgMove{0%{transform:translate(0,0)}100%{transform:translate(50px,50px)}}
+
+    /* ===== Top bar ===== */
+    .top-bar{
+      background:linear-gradient(135deg,rgba(15,12,41,.95) 0%,rgba(48,43,99,.80) 100%);
+      border-bottom:2px solid var(--accent-border);
+      box-shadow:0 8px 32px rgba(0,0,0,.6),0 0 30px rgba(255,107,107,.15),inset 0 1px 0 rgba(255,255,255,.08);
+      padding:12px 14px;
+      display:flex;align-items:center;justify-content:space-between;
+      position:sticky;top:0;z-index:10;
+      backdrop-filter:blur(10px);
+      flex-wrap:wrap;gap:10px;
+    }
+    .navbar-brand-section{display:flex;align-items:center;gap:10px;flex:1 1 auto;min-width:240px}
+    .dashboard-icon{font-size:20px}
+    .navbar-divider{width:2px;height:34px;background:linear-gradient(180deg,transparent,rgba(255,107,107,.4),transparent);border-radius:1px}
+    .dashboard-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .dashboard-title{font-size:18px;font-weight:900;letter-spacing:.5px;text-shadow:0 0 15px rgba(255,107,107,.3);white-space:nowrap}
+    .datetime-display{display:flex;flex-direction:column;gap:2px}
+    .clock-display{font-size:12px;font-weight:900;font-family:'Courier New',monospace;display:flex;gap:6px;align-items:center}
+    .clock-display::before{content:'🕐';font-size:12px}
+    .date-display{font-size:9px;color:rgba(255,107,107,.85);font-weight:800;text-transform:uppercase}
+
+    .navbar-actions{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+    .btn-navbar{
+      background:var(--accent-soft);
+      color:#ffb3b3;
+      border:1.5px solid var(--accent-border);
+      padding:7px 10px;border-radius:10px;
+      cursor:pointer;
+      font-weight:900;font-size:10px;
+      text-transform:uppercase;letter-spacing:.3px;
+      transition:var(--t);
+      backdrop-filter:blur(6px);
+    }
+    .btn-navbar:hover{background:rgba(255,107,107,.22);border-color:rgba(255,107,107,.65);color:var(--text);transform:translateY(-2px)}
+    .btn-navbar.spreadsheet,.btn-navbar.drive{background:var(--green-soft);color:var(--green-text);border-color:var(--green-border)}
+    .btn-navbar.spreadsheet:hover,.btn-navbar.drive:hover{background:rgba(52,168,83,.25);border-color:rgba(76,175,80,.65);color:#d9ffe1}
+
+    /* ===== Page cards ===== */
+    .container{padding:18px 12px;max-width:1100px}
+    .welcome-text{font-size:16px;font-weight:800;margin-bottom:12px;color:rgba(255,255,255,.95)}
+    .welcome-text strong{color:var(--accent);text-shadow:0 0 20px rgba(255,107,107,.5)}
+    .card-top{background:var(--accent-gradient);border-radius:16px;padding:18px 14px;text-align:center;margin-bottom:16px;box-shadow:0 10px 40px rgba(255,107,107,.35)}
+    .card-top h3{font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+    .card-top h2{font-size:26px;font-weight:900;margin:0}
+    .card{background:var(--panel);border-radius:16px;border:1px solid rgba(255,107,107,.18);box-shadow:0 10px 28px rgba(0,0,0,.42);backdrop-filter:blur(10px)}
+    .card-body{text-align:center;padding:16px}
+    .card h5{font-size:11px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;color:rgba(255,255,255,.92)}
+    .amount{font-size:22px;font-weight:900}
+    .btn-action{width:100%;border:0;border-radius:14px;padding:14px;font-weight:900;letter-spacing:.9px;text-transform:uppercase;background:var(--accent-gradient);color:#fff;box-shadow:0 10px 26px rgba(255,107,107,.35)}
+    .detail-card{background:var(--panel);border-radius:16px;border:1px solid rgba(255,107,107,.18);box-shadow:0 10px 26px rgba(0,0,0,.42);padding:14px}
+    .detail-card h4{font-size:13px;font-weight:900;margin-bottom:10px}
+    .detail-item{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,107,107,.18);padding-bottom:10px;margin-bottom:10px}
+    .detail-item:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
+    .detail-label{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.4px;color:var(--text-dim)}
+    .detail-value{font-size:13px;font-weight:900}
+    .detail-value.in{color:#66bb6a}
+    .detail-value.out{color:var(--accent)}
+
+    /* ✅ GLOBAL SPACING (HP + Desktop) */
+    .container{padding-top:24px;padding-bottom:28px}
+    .welcome-text{margin-bottom:16px}
+    .card-top{margin-bottom:18px}
+    .btn-action{margin-top:8px;margin-bottom:18px}
+    .row.g-2{--bs-gutter-x:14px;--bs-gutter-y:14px}
+    .card-body{padding:18px}
+    .detail-card{padding:16px}
+
+    /* ===== Desktop polish (>= 992px) ===== */
+    @media (min-width: 992px) {
+      .container{max-width:1220px;padding:42px 28px}
+      .welcome-text{font-size:26px;margin-bottom:26px}
+      .card-top{padding:34px 30px;margin-bottom:26px;border-radius:22px;box-shadow:0 18px 60px rgba(255,107,107,.30)}
+      .card-top h3{font-size:12px;letter-spacing:2px;opacity:.95}
+      .card-top h2{font-size:56px;letter-spacing:.5px}
+      .row.g-2{--bs-gutter-x:22px;--bs-gutter-y:22px}
+      .card{border-radius:22px}
+      .card-body{padding:26px 22px}
+      .card h5{font-size:12px;letter-spacing:1.2px}
+      .amount{font-size:40px;letter-spacing:.2px}
+      .btn-action{padding:18px;font-size:15px;border-radius:18px;box-shadow:0 18px 55px rgba(255,107,107,.35);margin-bottom:28px}
+      .detail-card{border-radius:22px;padding:18px}
+      .detail-card h4{font-size:15px}
+      .detail-label{font-size:11px;letter-spacing:.6px}
+      .detail-value{font-size:15px}
+      .btn-navbar{font-size:11px;padding:9px 14px;border-radius:12px}
+      .dashboard-title{font-size:20px}
+    }
+
+    @media (min-width: 1200px) {
+      .container{max-width:1260px}
+      .row.g-2{--bs-gutter-x:26px;--bs-gutter-y:26px}
+    }
+
+    /* =========================
+       MODAL GLOBAL THEME (Profile + Confirm + History)
+    ========================= */
+    .modal-backdrop.show{opacity:.72}
+    .btn-close{filter:invert(1);opacity:.8}
+    .btn-close:hover{opacity:1}
+
+    .modal .modal-content{
+      background:var(--panel2);
+      color:var(--text);
+      border:1px solid rgba(255,107,107,.22);
+      box-shadow:var(--shadow);
+      border-radius:16px;
+      overflow:hidden;
+    }
+    .modal .modal-header{
+      background:linear-gradient(135deg,rgba(15,12,41,.95) 0%,rgba(48,43,99,.80) 100%);
+      border-bottom:2px solid var(--accent-border);
+      color:var(--text);
+    }
+    .modal .modal-footer{
+      border-top:1px solid rgba(255,107,107,.20);
+      background:transparent;
+    }
+    .modal .modal-body{background:transparent}
+
+    .modal input.form-control{
+      background:rgba(255,255,255,.06) !important;
+      border:2px solid rgba(255,107,107,.28) !important;
+      color:var(--text) !important;
+      border-radius:12px !important;
+      padding:12px 12px !important;
+    }
+    .modal input.form-control::placeholder{color:rgba(255,255,255,.35)}
+    .modal input.form-control:focus{
+      outline:none !important;
+      box-shadow:0 0 20px rgba(255,107,107,.22) !important;
+      border-color:rgba(255,107,107,.65) !important;
+      background:rgba(255,107,107,.08) !important;
+    }
+
+    .msg-profile{margin-top:12px;padding:10px 12px;border-radius:12px;display:none;font-weight:900;font-size:11px}
+    .msg-profile.success{display:block;background:rgba(76,175,80,.18);border:1px solid rgba(76,175,80,.45);color:#78d28a}
+    .msg-profile.error{display:block;background:rgba(255,107,107,.18);border:1px solid rgba(255,107,107,.45);color:var(--accent)}
+
+    .btn-update-profile{
+      width:100%;
+      background:var(--accent-gradient);
+      border:0;
+      color:#fff;
+      font-weight:900;
+      letter-spacing:.5px;
+      padding:12px;
+      border-radius:12px;
+      box-shadow:0 10px 26px rgba(255,107,107,.30);
+    }
+    .btn-update-profile:disabled{opacity:.6;cursor:not-allowed}
+
+    #confirmModal .btn-secondary{
+      background:rgba(255,255,255,.08) !important;
+      border:1px solid rgba(255,255,255,.15) !important;
+      color:rgba(255,255,255,.85) !important;
+      border-radius:12px !important;
+      font-weight:900;
+    }
+    #confirmOkBtn{
+      background:var(--accent-gradient) !important;
+      border:0 !important;
+      color:#fff !important;
+      font-weight:900 !important;
+      border-radius:12px !important;
+      padding:10px 14px !important;
+    }
+
+    /* ✅ PROFILE MODAL SPACING FIX */
+    #profileModal .modal-body{padding:16px !important}
+    #profileModal .profile-form-group{margin-bottom:14px !important}
+    #profileModal .profile-form-group label{
+      display:block;
+      margin-bottom:8px !important;
+      font-weight:900;
+      letter-spacing:.4px;
+      text-transform:uppercase;
+      font-size:11px;
+      color:rgba(255,255,255,.78);
+    }
+    #profileModal .profile-form-group input.form-control{
+      padding:12px 12px !important;
+      border-radius:14px !important;
+    }
+    #profileModal .btn-update-profile{
+      margin-top:8px !important;
+      padding:14px 14px !important;
+      border-radius:16px !important;
+      letter-spacing:.8px;
+    }
+    #profileModal #profileMsg{margin-top:12px !important}
+    @media (min-width: 992px){
+      #profileModal .modal-dialog{max-width:560px}
+      #profileModal .modal-body{padding:20px 22px !important}
+      #profileModal .profile-form-group{margin-bottom:16px !important}
+    }
+
+    /* =========================
+       HISTORY MODAL FULLSCREEN + SCROLL
+    ========================= */
+    #historyModal .modal-dialog{
+      width:calc(100vw - 16px);
+      max-width:none !important;
+      height:calc(100vh - 16px);
+      margin:8px;
+    }
+    #historyModal .modal-content{height:100%}
+    #historyModal .modal-body{
+      height:calc(100% - 60px);
+      overflow:auto !important;
+      -webkit-overflow-scrolling:touch;
+      padding:12px;
+    }
+    #historyModal .modal-content,
+    #historyModal .modal-body,
+    .history-table-area{touch-action:pan-y}
+    @media (max-width:576px){
+      #historyModal .modal-dialog{width:100vw;height:100vh;margin:0}
+      #historyModal .modal-content{border-radius:0}
+      #historyModal .modal-body{height:calc(100vh - 60px)}
+    }
+
+    .history-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+    .btn-delete-multi{
+      background:rgba(244,67,54,.18);
+      color:#ff8a80;
+      border:1px solid rgba(244,67,54,.50);
+      padding:10px 12px;border-radius:12px;
+      font-weight:900;font-size:11px;cursor:pointer;
+      text-transform:uppercase;letter-spacing:.4px;
+      white-space:nowrap;
+    }
+    .btn-delete-multi:disabled{opacity:.4;cursor:not-allowed}
+
+    .nav-tabs{
+      border-bottom:2px solid rgba(255,107,107,.22);
+      background:rgba(255,107,107,.05);
+      border-radius:12px;
+      padding:6px;
+      margin:0;
+      gap:6px;
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      flex:1;
+    }
+    .nav-tabs .nav-link{
+      color:var(--text-dim);
+      border:0;
+      padding:10px 12px;
+      border-radius:12px;
+      background:rgba(255,255,255,.02);
+      font-weight:900;
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+    }
+    .nav-tabs .nav-link.active{background:rgba(255,107,107,.18) !important;color:#fff !important}
+
+    .history-table-area{
+      height:calc(100% - 58px - 56px);
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+      border-radius:14px;
+      border:1px solid rgba(255,107,107,.16);
+      background:rgba(0,0,0,.10);
+    }
+    .table-history{font-size:12px;color:rgba(255,255,255,.92);border-collapse:collapse;width:100%;margin:0}
+    .table-history thead th{
+      position:sticky;top:0;z-index:2;
+      background:linear-gradient(135deg,rgba(255,107,107,.28),rgba(255,107,107,.16));
+      font-weight:900;text-align:center;
+      border-bottom:2px solid rgba(255,107,107,.55);
+      padding:12px 10px;
+      text-transform:uppercase;
+      letter-spacing:.4px;
+      font-size:11px;
+      white-space:nowrap;
+    }
+    .table-history td{
+      text-align:center;
+      padding:12px 10px;
+      border-bottom:1px solid rgba(255,107,107,.10);
+      vertical-align:middle;
+      word-break:break-word;
+    }
+    .table-history tbody tr:nth-child(odd){background:rgba(25,20,50,.25)}
+    .table-history tbody tr:nth-child(even){background:rgba(35,28,60,.25)}
+    .table-history a{color:#ffb3b3;text-decoration:none;font-weight:900;border-bottom:1px solid rgba(255,153,153,.25);font-size:11px}
+    .row-check{width:16px;height:16px;accent-color:#ff6b6b;cursor:pointer}
+    #historyModal .table-history td:nth-child(4){word-break:normal !important;white-space:normal !important}
+
+    .history-footer{height:56px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;flex-wrap:wrap}
+    .pagination-container{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+    .pagination-btn{
+      background:rgba(255,107,107,.10);
+      border:1.5px solid rgba(255,107,107,.30);
+      color:rgba(255,255,255,.70);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      font-size:11px;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.2px;
+      min-width:44px;
+    }
+    .pagination-btn.active{background:var(--accent-gradient);color:#fff;border-color:rgba(255,107,107,.80)}
+    .pagination-btn:disabled{opacity:.35;cursor:not-allowed}
+    .pagination-info{
+      font-size:11px;font-weight:900;color:rgba(255,255,255,.70);
+      border:1px solid rgba(255,107,107,.18);
+      background:rgba(255,107,107,.08);
+      padding:10px 12px;
+      border-radius:12px;
+      white-space:nowrap;
+    }
+
+    #appToast{border-radius:16px}
+
+    @media (min-width:768px){
+      .container{padding:34px 24px}
+      .welcome-text{font-size:22px;margin-bottom:18px}
+      .card-top{padding:28px;margin-bottom:24px}
+      .card-top h2{font-size:40px}
+      .amount{font-size:30px}
+      .btn-action{font-size:14px;padding:16px}
+      .btn-navbar{font-size:11px;padding:8px 12px}
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-bar">
+    <div class="navbar-brand-section">
+      <div class="dashboard-icon">📊</div>
+      <div class="navbar-divider"></div>
+      <div class="dashboard-info">
+        <div class="dashboard-title">Dashboard</div>
+        <div class="datetime-display">
+          <div class="clock-display"><span id="clock">00:00:00</span></div>
+          <div class="date-display"><span id="date">-</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="navbar-actions">
+      <button class="btn-navbar" onclick="openHistory()">📋 History</button>
+      <button class="btn-navbar" onclick="openProfile()">👤 Profil</button>
+      <button class="btn-navbar spreadsheet" onclick="openSpreadsheet()">📊 Spreadsheet</button>
+      <button class="btn-navbar drive" onclick="openDrive()">🗂️ Drive</button>
+      <button class="btn-navbar" onclick="logout()">🚪 Logout</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="welcome-text">👋 Halo, <strong id="username">...</strong>!</div>
+
+    <div class="card-top">
+      <h3>💳 Uang Di Rekening</h3>
+      <h2 id="uangDiRekening">Rp 0</h2>
+    </div>
+
+    <div class="row g-2">
+      <div class="col-12 col-md-4"><div class="card bg-primary text-white"><div class="card-body"><h5>💰 Saya</h5><p class="amount" id="saya">Rp 0</p></div></div></div>
+      <div class="col-12 col-md-4"><div class="card bg-success text-white"><div class="card-body"><h5>👤 Bendahara</h5><p class="amount" id="bendahara">Rp 0</p></div></div></div>
+      <div class="col-12 col-md-4"><div class="card bg-warning text-white"><div class="card-body"><h5>⚙️ Admin</h5><p class="amount" id="admin">Rp 0</p></div></div></div>
+    </div>
+
+    <button class="btn btn-action btn-lg" onclick="goTransaksi()">➕ TRANSAKSI BARU</button>
+
+    <div class="row g-2">
+      <div class="col-12 col-md-6">
+        <div class="detail-card">
+          <h4>💰 Uang Saya</h4>
+          <div class="detail-item"><span class="detail-label">Pengeluaran</span><span class="detail-value out" id="uangSayaPengeluaran">Rp 0</span></div>
+          <div class="detail-item"><span class="detail-label">Pemasukan</span><span class="detail-value in" id="uangSayaPemasukan">Rp 0</span></div>
+        </div>
+      </div>
+      <div class="col-12 col-md-6">
+        <div class="detail-card">
+          <h4>👤 Uang Bendahara</h4>
+          <div class="detail-item"><span class="detail-label">Pengeluaran</span><span class="detail-value out" id="uangBendaharaPengeluaran">Rp 0</span></div>
+          <div class="detail-item"><span class="detail-label">Pemasukan</span><span class="detail-value in" id="uangBendaharaPemasukan">Rp 0</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY MODAL (no AKSI column; delete via "HAPUS YANG DIPILIH") -->
+  <div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen-sm-down modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">📋 History Transaksi</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="history-toolbar">
+            <button class="btn-delete-multi" id="historyDeleteSelected" onclick="deleteSelectedForActiveTab()" disabled>🗑️ HAPUS YANG DIPILIH</button>
+            <ul class="nav nav-tabs mb-0" role="tablist">
+              <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#uangSayaTab">💰 Saya</a></li>
+              <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#uangBendaharaTab">👤 Bendahara</a></li>
+              <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#uangAdminTab">⚙️ Admin</a></li>
+            </ul>
+          </div>
+
+          <div class="tab-content">
+            <div id="uangSayaTab" class="tab-pane fade show active">
+              <div class="history-table-area">
+                <table class="table-history">
+                  <thead>
+                    <tr>
+                      <th style="width:44px;"><input type="checkbox" class="row-check" id="uangSayaSelectAll" onclick="toggleSelectAll('uangSayaBody', this)"></th>
+                      <th style="width:70px;">No</th>
+                      <th style="width:120px;">Tgl</th>
+                      <th style="min-width:320px;">Ket</th>
+                      <th style="width:90px;">Struk</th>
+                      <th style="width:140px;">Masuk</th>
+                      <th style="width:140px;">Keluar</th>
+                      <th style="width:140px;">Saldo</th>
+                    </tr>
+                  </thead>
+                  <tbody id="uangSayaBody"><tr><td colspan="8" class="text-center" style="padding:14px;">Loading...</td></tr></tbody>
+                </table>
+              </div>
+
+              <div class="history-footer">
+                <div class="pagination-container" id="uangSayaPagination"></div>
+                <div class="pagination-info" id="uangSayaInfo"></div>
+              </div>
+            </div>
+
+            <div id="uangBendaharaTab" class="tab-pane fade">
+              <div class="history-table-area">
+                <table class="table-history">
+                  <thead>
+                    <tr>
+                      <th style="width:44px;"><input type="checkbox" class="row-check" id="uangBendaharaSelectAll" onclick="toggleSelectAll('uangBendaharaBody', this)"></th>
+                      <th style="width:70px;">No</th>
+                      <th style="width:120px;">Tgl</th>
+                      <th style="min-width:320px;">Ket</th>
+                      <th style="width:90px;">Struk</th>
+                      <th style="width:140px;">Masuk</th>
+                      <th style="width:140px;">Keluar</th>
+                      <th style="width:140px;">Saldo</th>
+                    </tr>
+                  </thead>
+                  <tbody id="uangBendaharaBody"><tr><td colspan="8" class="text-center" style="padding:14px;">Loading...</td></tr></tbody>
+                </table>
+              </div>
+
+              <div class="history-footer">
+                <div class="pagination-container" id="uangBendaharaPagination"></div>
+                <div class="pagination-info" id="uangBendaharaInfo"></div>
+              </div>
+            </div>
+
+            <div id="uangAdminTab" class="tab-pane fade">
+              <div class="history-table-area">
+                <table class="table-history">
+                  <thead>
+                    <tr>
+                      <th style="width:44px;"><input type="checkbox" class="row-check" id="uangAdminSelectAll" onclick="toggleSelectAll('uangAdminBody', this)"></th>
+                      <th style="width:70px;">No</th>
+                      <th style="width:120px;">Tgl</th>
+                      <th style="min-width:320px;">Dsk</th>
+                      <th style="width:90px;">Struk</th>
+                      <th style="width:140px;">Potong</th>
+                      <th style="width:140px;">Ket</th>
+                      <th style="width:140px;">Saldo</th>
+                    </tr>
+                  </thead>
+                  <tbody id="uangAdminBody"><tr><td colspan="8" class="text-center" style="padding:14px;">Loading...</td></tr></tbody>
+                </table>
+              </div>
+
+              <div class="history-footer">
+                <div class="pagination-container" id="uangAdminPagination"></div>
+                <div class="pagination-info" id="uangAdminInfo"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE MODAL -->
+  <div class="modal fade" id="profileModal" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen-sm-down">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">👤 Edit Profil</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="profile-form-group"><label>Username</label><input type="text" class="form-control" id="profileUsername" placeholder="Masukkan username baru"></div>
+          <div class="profile-form-group"><label>Email</label><input type="email" class="form-control" id="profileEmail" placeholder="Masukkan email baru"></div>
+          <div class="profile-form-group"><label>Password Baru</label><input type="password" class="form-control" id="profilePassword" placeholder="Kosongkan jika tidak ingin mengubah"></div>
+          <button class="btn-update-profile" id="updateProfileBtn" onclick="updateProfile()">💾 UPDATE</button>
+          <div id="profileMsg" class="msg-profile"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRM MODAL -->
+  <div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmTitle">Konfirmasi</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="confirmBody">...</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn" id="confirmOkBtn">Ya, Hapus</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080">
+    <div id="appToast" class="toast align-items-center text-bg-dark border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: rgba(30,30,46,0.95) !important; border: 1px solid rgba(255, 107, 107, 0.25) !important; backdrop-filter: blur(10px);">
+      <div class="d-flex">
+        <div class="toast-body" id="toastBody" style="color: rgba(255,255,255,0.92); font-weight: 900;">...</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const ITEMS_PER_PAGE = 15;
+    let allData = { uangSaya: [], uangBendahara: [], uangAdmin: [] };
+    let currentPage = { uangSaya: 1, uangBendahara: 1, uangAdmin: 1 };
+    let selectedRows = { uangSayaBody: new Set(), uangBendaharaBody: new Set(), uangAdminBody: new Set() };
+
+    function showToast(message) {
+      document.getElementById('toastBody').textContent = message;
+      const t = new bootstrap.Toast(document.getElementById('appToast'), { delay: 2500 });
+      t.show();
+    }
+
+    // allow custom okText/cancelText (logout -> "Ya, Keluar")
+    function showConfirm(title, htmlBody, onOk, options = {}) {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmBody').innerHTML = htmlBody;
+
+      const okText = options.okText || "Ya, Hapus";
+      const cancelText = options.cancelText || "Batal";
+
+      const footer = document.querySelector('#confirmModal .modal-footer');
+      const cancelBtn = footer.querySelector('button.btn.btn-secondary');
+      cancelBtn.textContent = cancelText;
+
+      const okBtnOld = document.getElementById('confirmOkBtn');
+      okBtnOld.textContent = okText;
+
+      const okBtn = okBtnOld.cloneNode(true);
+      okBtnOld.parentNode.replaceChild(okBtn, okBtnOld);
+
+      okBtn.addEventListener('click', () => {
+        bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+        onOk && onOk();
+      });
+
+      new bootstrap.Modal(document.getElementById('confirmModal')).show();
+    }
+
+    function formatCurrency(value) {
+      if (!value || value === "0" || value === "-") return "Rp 0";
+      let numStr = value.toString().replace("Rp ", "").trim().replace(/\s/g, "").replace(/\./g, "").replace(/,/g, ".");
+      let num = parseFloat(numStr);
+      return isNaN(num) ? "Rp 0" : "Rp " + Math.round(num).toLocaleString('id-ID');
+    }
+
+    function parseDateForSort(dateStr) {
+      if (!dateStr) return 0;
+      let m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (m) return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3])).getTime();
+      m = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m) {
+        const a = parseInt(m[1], 10);
+        const b = parseInt(m[2], 10);
+        const y = parseInt(m[3], 10);
+        if (a > 12) return new Date(y, b - 1, a).getTime();
+        return new Date(y, a - 1, b).getTime();
+      }
+      const t = Date.parse(dateStr);
+      return isNaN(t) ? 0 : t;
+    }
+
+    function sortByTanggalDesc(data) {
+      return (data || []).slice().sort((x, y) => parseDateForSort(y.tanggal) - parseDateForSort(x.tanggal));
+    }
+
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent =
+        `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+      document.getElementById('date').textContent =
+        now.toLocaleDateString('id-ID', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function paginateData(data) {
+      const pages = [];
+      for (let i = 0; i < data.length; i += ITEMS_PER_PAGE) pages.push(data.slice(i, i + ITEMS_PER_PAGE));
+      return pages.length > 0 ? pages : [[]];
+    }
+
+    function renderPagination(type, totalPages) {
+      const container = document.getElementById(`${type}Pagination`);
+      container.innerHTML = '';
+      if (totalPages <= 1) return;
+
+      const prevBtn = document.createElement('button');
+      prevBtn.className = 'pagination-btn';
+      prevBtn.textContent = '←';
+      prevBtn.disabled = currentPage[type] === 1;
+      prevBtn.onclick = () => goToPage(type, currentPage[type] - 1);
+      container.appendChild(prevBtn);
+
+      for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.className = `pagination-btn ${i === currentPage[type] ? 'active' : ''}`;
+        btn.textContent = i;
+        btn.onclick = () => goToPage(type, i);
+        container.appendChild(btn);
+      }
+
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'pagination-btn';
+      nextBtn.textContent = '→';
+      nextBtn.disabled = currentPage[type] === totalPages;
+      nextBtn.onclick = () => goToPage(type, currentPage[type] + 1);
+      container.appendChild(nextBtn);
+    }
+
+    function goToPage(type, pageNum) {
+      const pages = paginateData(allData[type]);
+      if (pageNum < 1 || pageNum > pages.length) return;
+
+      const selectAllId = `${type}SelectAll`;
+      const selectAll = document.getElementById(selectAllId);
+      if (selectAll) selectAll.checked = false;
+
+      currentPage[type] = pageNum;
+      renderTable(`${type}Body`, pages[pageNum - 1], type === 'uangAdmin' ? 'admin' : 'normal');
+      updatePaginationInfo(type, pageNum, pages.length);
+      renderPagination(type, pages.length);
+      updateDeleteSelectedButtonGlobal();
+    }
+
+    function updatePaginationInfo(type, currentPageNum, totalPages) {
+      const infoElement = document.getElementById(`${type}Info`);
+      const startItem = (currentPageNum - 1) * ITEMS_PER_PAGE + 1;
+      const endItem = Math.min(currentPageNum * ITEMS_PER_PAGE, allData[type].length);
+      infoElement.textContent = `Hal ${currentPageNum}/${totalPages} | ${startItem}-${endItem} dari ${allData[type].length}`;
+    }
+
+    function getActiveHistoryBodyId() {
+      const active = document.querySelector('#historyModal .tab-pane.active');
+      if (!active) return 'uangSayaBody';
+      if (active.id === 'uangSayaTab') return 'uangSayaBody';
+      if (active.id === 'uangBendaharaTab') return 'uangBendaharaBody';
+      if (active.id === 'uangAdminTab') return 'uangAdminBody';
+      return 'uangSayaBody';
+    }
+
+    function getActiveHistoryType() {
+      const bodyId = getActiveHistoryBodyId();
+      return bodyId === 'uangAdminBody' ? 'admin' : 'normal';
+    }
+
+    function updateDeleteSelectedButtonGlobal() {
+      const bodyId = getActiveHistoryBodyId();
+      const count = selectedRows[bodyId]?.size || 0;
+      const btn = document.getElementById('historyDeleteSelected');
+      btn.disabled = count === 0;
+      btn.textContent = count === 0 ? '🗑️ HAPUS YANG DIPILIH' : `🗑️ HAPUS (${count})`;
+    }
+
+    function onRowCheckChanged(bodyId, rowNo, checked) {
+      if (!selectedRows[bodyId]) selectedRows[bodyId] = new Set();
+      if (checked) selectedRows[bodyId].add(String(rowNo));
+      else selectedRows[bodyId].delete(String(rowNo));
+      updateDeleteSelectedButtonGlobal();
+    }
+
+    function toggleSelectAll(bodyId, checkboxEl) {
+      const tbody = document.getElementById(bodyId);
+      if (!tbody) return;
+
+      const checks = tbody.querySelectorAll('input[type="checkbox"][data-rowno]');
+      checks.forEach(ch => {
+        ch.checked = checkboxEl.checked;
+        const rowNo = ch.getAttribute('data-rowno');
+        onRowCheckChanged(bodyId, rowNo, checkboxEl.checked);
+      });
+    }
+
+    function renderTable(bodyId, data, type) {
+      const tbody = document.getElementById(bodyId);
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center" style="padding:14px;">Tidak ada data</td></tr>`;
+        return;
+      }
+
+      let html = '';
+      data.forEach(row => {
+        const isChecked = selectedRows[bodyId] && selectedRows[bodyId].has(String(row.no));
+        const checkbox = `<input class="row-check" type="checkbox" data-rowno="${row.no}" ${isChecked ? 'checked' : ''} onchange="onRowCheckChanged('${bodyId}', '${row.no}', this.checked)">`;
+
+        if (type === 'admin') {
+          html += `<tr>
+            <td>${checkbox}</td>
+            <td>${row.no || ''}</td>
+            <td>${row.tanggal || ''}</td>
+            <td>${row.deskripsi || ''}</td>
+            <td>${row.struck ? `<a href="${row.struck}" target="_blank">Lihat</a>` : '-'}</td>
+            <td class="out">${row.potongan && row.potongan !== '-' ? formatCurrency(row.potongan) : '-'}</td>
+            <td>${row.keterangan || '-'}</td>
+            <td>${row.saldo ? formatCurrency(row.saldo) : ''}</td>
+          </tr>`;
+        } else {
+          html += `<tr>
+            <td>${checkbox}</td>
+            <td>${row.no || ''}</td>
+            <td>${row.tanggal || ''}</td>
+            <td>${row.keterangan || ''}</td>
+            <td>${row.struck ? `<a href="${row.struck}" target="_blank">Lihat</a>` : '-'}</td>
+            <td class="in">${row.pemasukan && row.pemasukan !== '-' && row.pemasukan !== '0' ? formatCurrency(row.pemasukan) : '-'}</td>
+            <td class="out">${row.pengeluaran && row.pengeluaran !== '-' && row.pengeluaran !== '0' ? formatCurrency(row.pengeluaran) : '-'}</td>
+            <td>${row.saldo ? formatCurrency(row.saldo) : ''}</td>
+          </tr>`;
+        }
+      });
+
+      tbody.innerHTML = html;
+      updateDeleteSelectedButtonGlobal();
+    }
+
+    function sheetNameFromBodyId(bodyId) {
+      const sheetNameMap = {
+        'uangSayaBody': 'Uang Saya',
+        'uangBendaharaBody': 'Uang Bendahara',
+        'uangAdminBody': 'Uang Admin'
+      };
+      return sheetNameMap[bodyId];
+    }
+
+    function deleteSelected(bodyId, type) {
+      const sheetName = sheetNameFromBodyId(bodyId);
+      const selected = Array.from(selectedRows[bodyId] || []);
+
+      if (!sheetName) { showToast("❌ Sheet tidak ditemukan untuk tabel ini"); return; }
+      if (selected.length === 0) { showToast("⚠️ Pilih minimal 1 data untuk dihapus"); return; }
+
+      const title = `Hapus ${selected.length} transaksi?`;
+      const body = `
+        <div style="font-size: 12px; color: rgba(255,255,255,0.75); line-height: 1.6;">
+          <div style="font-weight: 900; color: #ff8a80; margin-bottom: 8px;">⚠️ Tindakan ini tidak bisa dibatalkan</div>
+          <div>Data yang akan dihapus: <strong style="color:#fff;">${selected.length}</strong></div>
+          <div style="margin-top: 6px;">• Menghapus data kolom A–G</div>
+          <div>• Menggeser data bawah ke atas</div>
+          <div>• Mengupdate saldo otomatis</div>
+          <div>• Jika ada struk, file/folder di Drive akan masuk Trash</div>
+        </div>
+      `;
+
+      showConfirm(title, body, () => {
+        const btn = document.getElementById('historyDeleteSelected');
+        btn.disabled = true;
+
+        google.script.run
+          .withSuccessHandler(res => {
+            if (res && res.status) {
+              const failedCount = (res.failed && res.failed.length) ? res.failed.length : 0;
+              if (failedCount > 0) showToast(`✅ Terhapus ${res.deleted} data, gagal ${failedCount} data`);
+              else showToast(`✅ Berhasil menghapus ${res.deleted} data`);
+
+              selectedRows[bodyId] = new Set();
+              const selectAll = document.getElementById(bodyId.replace('Body','SelectAll'));
+              if (selectAll) selectAll.checked = false;
+
+              openHistory();
+              loadDashboardData();
+            } else {
+              showToast('❌ Gagal menghapus data: ' + (res?.msg || 'Error tidak diketahui'));
+              btn.disabled = false;
+            }
+          })
+          .withFailureHandler(err => {
+            console.error(err);
+            showToast('❌ Error: ' + err);
+            btn.disabled = false;
+          })
+          .deleteTransactionRows(sheetName, selected);
+      });
+    }
+
+    function deleteSelectedForActiveTab() {
+      const bodyId = getActiveHistoryBodyId();
+      deleteSelected(bodyId, getActiveHistoryType());
+    }
+
+    window.addEventListener('load', () => {
+      updateClock();
+      setInterval(updateClock, 1000);
+      loadDashboardData();
+    });
+
+    function loadDashboardData() {
+      google.script.run.withSuccessHandler(data => {
+        if (data) {
+          document.getElementById("username").textContent = data.user;
+          document.getElementById("uangDiRekening").textContent = formatCurrency(data.uangDiRekening);
+          document.getElementById("saya").textContent = formatCurrency(data.saya);
+          document.getElementById("bendahara").textContent = formatCurrency(data.bendahara);
+          document.getElementById("admin").textContent = formatCurrency(data.admin);
+          document.getElementById("uangSayaPengeluaran").textContent = formatCurrency(data.uangSayaPengeluaran);
+          document.getElementById("uangSayaPemasukan").textContent = formatCurrency(data.uangSayaPemasukan);
+          document.getElementById("uangBendaharaPengeluaran").textContent = formatCurrency(data.uangBendaharaPengeluaran);
+          document.getElementById("uangBendaharaPemasukan").textContent = formatCurrency(data.uangBendaharaPemasukan);
+        }
+      }).getDashboardData();
+    }
+
+    function openHistory() {
+      new bootstrap.Modal(document.getElementById('historyModal')).show();
+
+      const loadTab = (fn, typeKey, bodyId) => {
+        google.script.run.withSuccessHandler(data => {
+          const sorted = sortByTanggalDesc(data);
+
+          allData[typeKey] = sorted;
+          currentPage[typeKey] = 1;
+
+          selectedRows[bodyId] = new Set();
+          const selectAll = document.getElementById(`${typeKey}SelectAll`);
+          if (selectAll) selectAll.checked = false;
+
+          const pages = paginateData(sorted);
+          renderTable(bodyId, pages[0], typeKey === 'uangAdmin' ? 'admin' : 'normal');
+          updatePaginationInfo(typeKey, 1, pages.length);
+          renderPagination(typeKey, pages.length);
+          updateDeleteSelectedButtonGlobal();
+        })[fn]();
+      };
+
+      loadTab('getUangSayaHistory', 'uangSaya', 'uangSayaBody');
+      loadTab('getUangBendaharaHistory', 'uangBendahara', 'uangBendaharaBody');
+      loadTab('getUangAdminHistory', 'uangAdmin', 'uangAdminBody');
+    }
+
+    function openProfile() {
+      new bootstrap.Modal(document.getElementById('profileModal')).show();
+      google.script.run.withSuccessHandler(data => {
+        if (data) {
+          document.getElementById("profileUsername").value = data.username || '';
+          document.getElementById("profileEmail").value = data.email || '';
+          document.getElementById("profilePassword").value = '';
+          document.getElementById("profileMsg").className = 'msg-profile';
+        }
+      }).getProfileData();
+    }
+
+    function openSpreadsheet() {
+      window.open('https://docs.google.com/spreadsheets/d/1gS_lhWgaNDhN60zk-hZGmogil9gjOidegQI9JxLWvqg/edit?usp=sharing', '_blank');
+    }
+
+    function openDrive() {
+      google.script.run
+        .withSuccessHandler(url => {
+          if (url && url.trim() !== "") window.open(url, '_blank');
+          else showToast("❌ Link Drive tidak ditemukan (Rekap!O3)");
+        })
+        .withFailureHandler(err => {
+          console.error(err);
+          showToast("❌ Gagal membuka Drive");
+        })
+        .getDriveFolderUrl();
+    }
+
+    function updateProfile() {
+      const username = document.getElementById("profileUsername").value.trim();
+      const email = document.getElementById("profileEmail").value.trim();
+      const password = document.getElementById("profilePassword").value;
+      const btn = document.getElementById("updateProfileBtn");
+      const msgEl = document.getElementById("profileMsg");
+
+      if (!username || !email) {
+        msgEl.textContent = "❌ Username dan email tidak boleh kosong";
+        msgEl.className = "msg-profile error";
+        return;
+      }
+
+      btn.disabled = true;
+      msgEl.textContent = "⏳ Menyimpan...";
+      msgEl.className = "msg-profile";
+
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res && res.status) {
+            msgEl.textContent = "✅ " + res.msg;
+            msgEl.className = "msg-profile success";
+            document.getElementById("username").textContent = username;
+            setTimeout(() => {
+              bootstrap.Modal.getInstance(document.getElementById('profileModal')).hide();
+              loadDashboardData();
+            }, 1500);
+          } else {
+            msgEl.textContent = res?.msg || "❌ Gagal mengubah profil";
+            msgEl.className = "msg-profile error";
+            btn.disabled = false;
+          }
+        })
+        .withFailureHandler(err => {
+          msgEl.textContent = "❌ Error: " + err;
+          msgEl.className = "msg-profile error";
+          btn.disabled = false;
+        })
+        .updateProfile({ username, email, password });
+    }
+
+    function goTransaksi() {
+      google.script.run
+        .withSuccessHandler(url => top.location.href = url)
+        .withFailureHandler(err => { console.error("Error:", err); showToast("Gagal membuka halaman transaksi"); })
+        .getTransaksiUrl();
+    }
+
+    // logout confirm ok text: "Ya, Keluar"
+    function logout() {
+      showConfirm(
+        "Logout?",
+        `<div style="font-size:12px;color:rgba(255,255,255,0.75);">Yakin ingin logout dari aplikasi?</div>`,
+        () => {
+          google.script.run.withSuccessHandler(res => top.location.href = res.url).logout();
+        },
+        { okText: "Ya, Keluar", cancelText: "Batal" }
+      );
+    }
+
+    document.addEventListener('shown.bs.tab', function (event) {
+      if (event.target && event.target.getAttribute('data-bs-toggle') === 'tab') {
+        updateDeleteSelectedButtonGlobal();
+      }
+    });
+  </script>
+</body>
+</html>

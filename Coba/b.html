@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <base target="_top">
+  <title>Login - Keuangan App</title>
+  <style>
+    :root{
+      --bg:linear-gradient(135deg,#0f0c29 0%,#302b63 50%,#24243e 100%);
+      --accent:linear-gradient(135deg,#ff6b6b 0%,#ff5252 100%);
+      --accentSolid:#ff6b6b;
+      --accentBorder:rgba(255,107,107,.30);
+      --panel:rgba(30,30,46,.95);
+      --text:#fff;
+      --dim:rgba(255,255,255,.70);
+      --shadow:0 20px 60px rgba(0,0,0,.80);
+      --t:all .3s cubic-bezier(.4,0,.2,1);
+    }
+
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+      background:var(--bg);
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding:18px 14px;
+      overflow:hidden;
+      position:relative;
+      color:var(--text);
+    }
+
+    /* Animated Background */
+    body::before{
+      content:'';
+      position:fixed;
+      top:-50%;
+      left:-50%;
+      width:200%;
+      height:200%;
+      background:radial-gradient(circle,rgba(255,107,107,0.1) 1px,transparent 1px);
+      background-size:50px 50px;
+      animation:moveBackground 20s linear infinite;
+      z-index:-1;
+    }
+    @keyframes moveBackground{0%{transform:translate(0,0)}100%{transform:translate(50px,50px)}}
+
+    /* Glow */
+    .glow{
+      position:absolute;
+      width:320px;
+      height:320px;
+      background:radial-gradient(circle,rgba(255,107,107,.22) 0%,transparent 70%);
+      border-radius:50%;
+      top:-120px;
+      right:-120px;
+      animation:float 6s ease-in-out infinite;
+      pointer-events:none;
+    }
+    @keyframes float{0%,100%{transform:translate(0,0)}50%{transform:translate(-30px,-30px)}}
+
+    .login-container{
+      width:100%;
+      max-width:420px;
+      background:var(--panel);
+      backdrop-filter:blur(10px);
+      border:1px solid rgba(255,107,107,.20);
+      border-radius:20px;
+      box-shadow:var(--shadow),0 0 40px rgba(255,107,107,.25),inset 0 1px 0 rgba(255,255,255,.08);
+      padding:22px 18px;
+      animation:slideUp .8s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes slideUp{from{opacity:0;transform:translateY(50px)}to{opacity:1;transform:translateY(0)}}
+
+    .login-header{
+      text-align:center;
+      margin-bottom:16px;
+    }
+    .login-header .icon{
+      font-size:34px;
+      margin-bottom:8px;
+      filter:drop-shadow(0 0 18px rgba(255,107,107,.35));
+    }
+    .login-header h1{
+      font-size:22px;
+      font-weight:900;
+      margin-bottom:6px;
+      letter-spacing:1px;
+      text-shadow:0 0 18px rgba(255,107,107,.35);
+    }
+    .login-header p{
+      color:#b0a0ff;
+      font-size:11px;
+      letter-spacing:2px;
+      text-transform:uppercase;
+      opacity:.95;
+    }
+
+    .form-group{margin-bottom:14px}
+    label{
+      display:block;
+      margin-bottom:8px;
+      font-weight:900;
+      color:rgba(255,255,255,.78);
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.9px;
+    }
+    input{
+      width:100%;
+      padding:14px 14px;
+      border:2px solid var(--accentBorder);
+      border-radius:14px;
+      font-size:15px;
+      background:rgba(255,255,255,.05);
+      color:#fff;
+      transition:var(--t);
+      backdrop-filter:blur(5px);
+    }
+    input::placeholder{color:rgba(255,255,255,.30)}
+    input:focus{
+      outline:none;
+      border-color:rgba(255,107,107,.75);
+      background:rgba(255,107,107,.10);
+      box-shadow:0 0 22px rgba(255,107,107,.25),inset 0 0 18px rgba(255,107,107,.05);
+      transform:translateY(-1px);
+    }
+    input:hover{border-color:rgba(255,107,107,.5)}
+
+    /* active field */
+    input.active{
+      border-color:rgba(255,107,107,.85);
+      background:rgba(255,107,107,.12);
+      box-shadow:0 0 22px rgba(255,107,107,.25),inset 0 0 18px rgba(255,107,107,.05);
+    }
+
+    .helper-text{
+      font-size:11px;
+      color:rgba(255,255,255,.55);
+      margin-top:7px;
+      text-align:right;
+      line-height:1.3;
+    }
+
+    button{
+      width:100%;
+      padding:14px 14px;
+      background:var(--accent);
+      color:#fff;
+      border:0;
+      border-radius:14px;
+      font-size:13px;
+      font-weight:900;
+      cursor:pointer;
+      transition:var(--t);
+      text-transform:uppercase;
+      letter-spacing:1px;
+      box-shadow:0 12px 32px rgba(255,107,107,.35);
+      position:relative;
+      overflow:hidden;
+      margin-top:6px;
+      min-height:52px;
+    }
+    button::before{
+      content:'';
+      position:absolute;
+      top:0;
+      left:-100%;
+      width:100%;
+      height:100%;
+      background:rgba(255,255,255,.18);
+      transition:left .5s ease;
+    }
+    button:hover::before{left:100%}
+    button:hover{transform:translateY(-2px);box-shadow:0 18px 44px rgba(255,107,107,.55)}
+    button:active{transform:translateY(-1px)}
+    button:disabled{opacity:.6;cursor:not-allowed;transform:none}
+
+    .msg{
+      margin-top:14px;
+      padding:12px 14px;
+      text-align:center;
+      border-radius:14px;
+      font-weight:900;
+      display:none;
+      font-size:12px;
+      word-break:break-word;
+      animation:slideDown .4s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes slideDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+    .msg-error{background:rgba(255,107,107,.18);color:#ff9a9a;border:1px solid rgba(255,107,107,.45);display:block}
+    .msg-success{background:rgba(76,175,80,.18);color:#78d28a;border:1px solid rgba(76,175,80,.45);display:block}
+    .msg-loading{background:rgba(33,150,243,.16);color:#8ac7ff;border:1px solid rgba(33,150,243,.45);display:block}
+
+    /* Mobile-first tweaks: bigger tap targets, less padding, avoid overflow */
+    @media (max-width: 576px){
+      body{padding:16px 12px}
+      .login-container{
+        max-width:480px;
+        padding:20px 16px;
+        border-radius:18px;
+      }
+      .login-header .icon{font-size:38px}
+      .login-header h1{font-size:22px}
+      input{font-size:16px; padding:15px 14px; min-height:54px;}
+      button{min-height:54px; font-size:13px;}
+      .helper-text{font-size:11px}
+    }
+
+    /* Desktop polish */
+    @media (min-width: 768px){
+      .login-container{padding:34px 30px}
+      .login-header .icon{font-size:42px}
+      .login-header h1{font-size:26px}
+      .login-header p{font-size:12px}
+      .form-group{margin-bottom:16px}
+      label{font-size:12px}
+      input{font-size:16px; padding:15px 16px}
+      button{font-size:14px}
+    }
+
+    /* Prevent iOS zoom on focus by ensuring >=16px font */
+    @supports (-webkit-touch-callout: none) {
+      input{font-size:16px}
+    }
+  </style>
+</head>
+
+<body>
+  <div class="glow"></div>
+
+  <div class="login-container">
+    <div class="login-header">
+      <div class="icon">🔐</div>
+      <h1>LOGIN</h1>
+      <p>SISTEM KEUANGAN</p>
+    </div>
+
+    <div class="form-group">
+      <label for="username">Username</label>
+      <input id="username" type="text" placeholder="Masukkan username atau email" autocomplete="username" inputmode="text">
+      <div class="helper-text">Tekan Enter untuk lanjut ke Password</div>
+    </div>
+
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input id="password" type="password" placeholder="Masukkan password Anda" autocomplete="current-password">
+      <div class="helper-text">Tekan Enter untuk login</div>
+    </div>
+
+    <button id="loginBtn" type="button">MASUK</button>
+    <div id="message" class="msg"></div>
+  </div>
+
+  <script>
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const loginBtn = document.getElementById("loginBtn");
+    const messageEl = document.getElementById("message");
+
+    function showMsg(text, type) {
+      messageEl.textContent = text;
+      messageEl.className = "msg msg-" + type;
+    }
+
+    function setActive(activeEl) {
+      [usernameInput, passwordInput].forEach(el => el.classList.remove("active"));
+      if (activeEl) activeEl.classList.add("active");
+    }
+
+    function login() {
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!username || !password) {
+        showMsg("❌ Username dan password harus diisi", "error");
+        (!username ? usernameInput : passwordInput).focus();
+        return;
+      }
+
+      loginBtn.disabled = true;
+      showMsg("⏳ Sedang login...", "loading");
+
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res && res.status) {
+            showMsg("✅ Login berhasil! Mengalihkan...", "success");
+            setTimeout(() => { top.location.href = res.url; }, 900);
+          } else {
+            showMsg("❌ Username atau password salah", "error");
+            loginBtn.disabled = false;
+
+            usernameInput.value = "";
+            passwordInput.value = "";
+            usernameInput.focus();
+            setActive(usernameInput);
+          }
+        })
+        .withFailureHandler(err => {
+          console.error(err);
+          showMsg("❌ Terjadi kesalahan server", "error");
+          loginBtn.disabled = false;
+        })
+        .doLogin(username, password);
+    }
+
+    // focus default
+    window.addEventListener("load", () => {
+      usernameInput.focus();
+      setActive(usernameInput);
+    });
+
+    // Enter navigation
+    usernameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (usernameInput.value.trim()) {
+          passwordInput.focus();
+          setActive(passwordInput);
+        } else {
+          showMsg("❌ Username tidak boleh kosong", "error");
+        }
+      }
+    });
+
+    passwordInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        login();
+      }
+    });
+
+    // active highlight
+    usernameInput.addEventListener("focus", () => setActive(usernameInput));
+    passwordInput.addEventListener("focus", () => setActive(passwordInput));
+    usernameInput.addEventListener("blur", () => setActive(null));
+    passwordInput.addEventListener("blur", () => setActive(null));
+
+    loginBtn.addEventListener("click", login);
+  </script>
+</body>
+</html>

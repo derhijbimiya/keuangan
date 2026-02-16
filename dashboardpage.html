@@ -24,16 +24,26 @@ function isInGoogleSheetsDialog() {
 }
 function openApp2Page() {
   toggleMenu(false); // Tutup menu modal
-  if (isInGoogleSheetsDialog()) {
-    console.log('[DEBUG] openApp2Page: call google.script.run.getApp2PageHtml()');
-    google.script.run.withSuccessHandler(function(html) {
-      showDynamicPage(html);
-    }).getApp2PageHtml();
+  // Deteksi apakah di dialog/sidebar atau web app
+  var isDialog = false;
+  try {
+    isDialog = (
+      typeof google !== 'undefined' &&
+      google.script &&
+      google.script.run &&
+      typeof google.script.host !== 'undefined' &&
+      window.top !== window
+    );
+  } catch (e) { isDialog = false; }
+  if (isDialog) {
+    // Dialog/sidebar: gunakan google.script.run
+    google.script.run.withSuccessHandler(function(url) {
+      window.open(url + '?page=app2', '_blank');
+    }).getAppUrl();
   } else {
-    console.log('[DEBUG] openApp2Page: redirect to ?page=app2');
-    setTimeout(function() {
-      window.location.search = '?page=app2';
-    }, 150);
+    // Web app: langsung redirect
+    var baseUrl = window.location.origin + window.location.pathname;
+    window.location.href = baseUrl + '?page=app2';
   }
 }
 function openTentangPage() {
@@ -123,7 +133,7 @@ function showDynamicPage(html) {
           <div class="head">
             <div>
               <div class="kicker">Uang di Rekening</div>
-              <div class="value-xl compact" id="vTotalUang">-</div>
+              <div class="value-xl compact" id="vTotalUang" style="text-align:right;">-</div>
               <div class="value-sub compact">Saldo rekening saat ini</div>
             </div>
             <div class="card-actions">
@@ -138,7 +148,7 @@ function showDynamicPage(html) {
           <div class="head">
             <div>
               <div class="kicker">Uang Tabungan</div>
-              <div class="value-xl compact" id="vTotalTabungan">-</div>
+              <div class="value-xl compact" id="vTotalTabungan" style="text-align:right;">-</div>
               <div class="value-sub compact">Saldo tabungan saat ini</div>
             </div>
             <div class="card-actions">
@@ -1204,20 +1214,38 @@ function showDynamicPage(html) {
       }
 
       function savePassword_(){
-        const oldPassword = document.getElementById('pfOldPass').value;
-        const newPassword = document.getElementById('pfNewPass').value;
-        const newPassword2 = document.getElementById('pfNewPass2').value;
-
+        const oldPassword = document.getElementById('pfOldPass') ? document.getElementById('pfOldPass').value : '';
+        const newPassword = document.getElementById('pfNewPass') ? document.getElementById('pfNewPass').value : '';
+        const newPassword2 = document.getElementById('pfNewPass2') ? document.getElementById('pfNewPass2').value : '';
+        if (!oldPassword || !newPassword || !newPassword2) {
+          setBtnLoading('btnSavePassword', false);
+          showModalToast('profileToastContainer', 'Semua field password wajib diisi.', 'warning');
+          return;
+        }
+        if (newPassword.length < 4) {
+          setBtnLoading('btnSavePassword', false);
+          showModalToast('profileToastContainer', 'Password baru minimal 4 karakter.', 'warning');
+          return;
+        }
+        if (newPassword !== newPassword2) {
+          setBtnLoading('btnSavePassword', false);
+          showModalToast('profileToastContainer', 'Konfirmasi password tidak sama.', 'warning');
+          return;
+        }
+        const payload = { oldPassword, newPassword, newPassword2 };
         google.script.run.withSuccessHandler(res=>{
+          setBtnLoading('btnSavePassword', false);
           if(res && res.ok){
-            showToast(res.message || 'Password berhasil diubah.', 'success');
-            document.getElementById('pfOldPass').value = '';
-            document.getElementById('pfNewPass').value = '';
-            document.getElementById('pfNewPass2').value = '';
+            showModalToast('profileToastContainer', res.message || 'Password berhasil diubah.', 'success');
           } else {
-            showToast((res && res.message) || 'Gagal ubah password.', 'error');
+            showModalToast('profileToastContainer', (res && res.message) || 'Gagal ubah password.', 'error');
           }
-        }).apiProfileChangePassword({ oldPassword, newPassword, newPassword2 });
+        })
+        .withFailureHandler(err => {
+          setBtnLoading('btnSavePassword', false);
+          showModalToast('profileToastContainer', 'Terjadi error server: ' + (err && err.message ? err.message : err), 'error');
+        })
+        .apiProfileChangePassword(payload);
       }
 
       // ====== TX MODALS ======

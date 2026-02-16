@@ -64,6 +64,125 @@ const THEME_REGISTRY = Object.freeze({
       borderColor: 'rgba(59,130,246,.4)',
       cardShadow: '0 0 25px rgba(59,130,246,.2)'
     }
+  },
+  'galaxy-nebula': {
+    name: 'Galaxy Nebula',
+    description: 'Cosmic purple blue galaxy theme',
+    vars: {
+      bgMain: '#050412',
+      bgCard: '#0d0b24',
+      accent: '#8b5cf6',
+      accentSoft: 'rgba(139,92,246,.25)',
+      textMain: '#f4f0ff',
+      textSoft: 'rgba(210,200,255,.7)',
+      bgGradient: 'linear-gradient(135deg,#04030a,#120b2a)',
+      topbarBg: '#08061a',
+      inputBg: '#161236',
+      borderColor: 'rgba(139,92,246,.4)',
+      cardShadow: '0 0 28px rgba(139,92,246,.3)'
+    }
+  },
+  'neon-pink': {
+    name: 'Neon Pink Cyber Pro',
+    description: 'Futuristic neon pink dark dashboard / cyber UI',
+    vars: {
+      bgMain: '#0d0012',
+      bgCard: '#16001f',
+      accent: '#ff00aa',
+      accentSoft: 'rgba(255,0,170,.25)',
+      textMain: '#ffffff',
+      textSoft: 'rgba(255,180,220,.7)',
+      bgGradient: 'linear-gradient(135deg,#1a0024,#ff00aa33)',
+      topbarBg: '#24002e',
+      inputBg: '#1f0028',
+      borderColor: 'rgba(255,0,170,.6)',
+      cardShadow: '0 0 25px rgba(255,0,170,.45)'
+    }
+  },
+  'rose-neon-dream': {
+    name: 'Rose Neon Dream',
+    description: 'Soft neon pink futuristic theme',
+    vars: {
+      bgMain: '#0a0408',
+      bgCard: '#160911',
+      accent: '#f472b6',
+      accentSoft: 'rgba(244,114,182,.25)',
+      textMain: '#fff0f7',
+      textSoft: 'rgba(255,200,225,.7)',
+      bgGradient: 'linear-gradient(135deg,#050205,#1a0b14)',
+      topbarBg: '#11060d',
+      inputBg: '#24101c',
+      borderColor: 'rgba(244,114,182,.4)',
+      cardShadow: '0 0 24px rgba(244,114,182,.25)'
+    }
+  },
+  'sakura-moonlight': {
+    name: 'Sakura Moonlight',
+    description: 'Soft pink moonlight glow',
+    vars: {
+      bgMain: '#141018',
+      bgCard: '#1f1624',
+      accent: '#ff8fa3',
+      accentSoft: 'rgba(255,143,163,.35)',
+      textMain: '#fff5f8',
+      textSoft: 'rgba(255,220,230,.75)',
+      bgGradient: 'linear-gradient(135deg,#0f0c1a,#1b1024,#1a0f18)',
+      topbarBg: 'rgba(30,16,36,.75)',
+      inputBg: '#25182d',
+      borderColor: 'rgba(255,143,163,.45)',
+      cardShadow: '0 0 35px rgba(255,143,163,.35)'
+    }
+  },
+  'inferno-gold': {
+    name: 'Inferno Black Gold',
+    description: 'Luxury dark / gold premium',
+    vars: {
+      bgMain: '#070707',
+      bgCard: '#111111',
+      accent: '#f5c542',
+      accentSoft: 'rgba(245,197,66,.25)',
+      textMain: '#fff8e6',
+      textSoft: 'rgba(255,230,180,.7)',
+      bgGradient: 'linear-gradient(135deg,#040404,#1a1405)',
+      topbarBg: '#0e0e0e',
+      inputBg: '#1a1a1a',
+      borderColor: 'rgba(245,197,66,.4)',
+      cardShadow: '0 0 25px rgba(245,197,66,.25)'
+    }
+  },
+  'neon-tokyo-night': {
+    name: 'Neon Tokyo Night',
+    description: 'Cyberpunk Tokyo / neon city night',
+    vars: {
+      bgMain: '#050008',
+      bgCard: '#0f0618',
+      accent: '#00f7ff',
+      accentSoft: 'rgba(0,247,255,.25)',
+      textMain: '#ffffff',
+      textSoft: 'rgba(200,255,255,.7)',
+      bgGradient: 'linear-gradient(135deg,#020005,#12001a)',
+      topbarBg: '#0a0212',
+      inputBg: '#160b22',
+      borderColor: 'rgba(0,247,255,.4)',
+      cardShadow: '0 0 25px rgba(0,247,255,.25)'
+    }
+  },
+  'emerald-forest': {
+    name: 'Emerald Forest',
+    description: 'Dark nature / emerald green',
+    vars: {
+      bgMain: '#050c08',
+      bgCard: '#0c1a12',
+      accent: '#22c55e',
+      accentSoft: 'rgba(34,197,94,.25)',
+      textMain: '#eafff2',
+      textSoft: 'rgba(200,255,220,.7)',
+      bgGradient: 'linear-gradient(135deg,#020805,#0a1a12)',
+      topbarBg: '#08140d',
+      inputBg: '#10281a',
+      borderColor: 'rgba(34,197,94,.4)',
+      cardShadow: '0 0 20px rgba(34,197,94,.2)'
+    }
   }
 });
 
@@ -247,7 +366,8 @@ function themeGetUserThemeKey_(username) {
 
 function apiThemeGetMyTheme() {
   const username = getSessionUser_();
-  if (!username) return { ok: false, message: 'Belum login.' };
+  Logger.log('[apiThemeGetMyTheme] username: ' + username);
+  if (!username) return { ok: false, message: 'Belum login atau session expired.' };
 
   const key = themeGetUserThemeKey_(username);
   const themes = Object.keys(THEME_REGISTRY).map(k => ({ 
@@ -256,6 +376,8 @@ function apiThemeGetMyTheme() {
     description: THEME_REGISTRY[k].description || ''
   }));
 
+  Logger.log('[apiThemeGetMyTheme] themes: ' + JSON.stringify(themes));
+  Logger.log('[apiThemeGetMyTheme] active: ' + JSON.stringify(themeBuildResponse_(key)));
   return { ok: true, active: themeBuildResponse_(key), themes: themes };
 }
 

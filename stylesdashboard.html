@@ -1,4 +1,3 @@
-
 <style>
   /* Profile Modal Tab Buttons */
   body.dashboard .profile-tab-nav {
@@ -83,7 +82,10 @@
   }
 
   *{ box-sizing:border-box; }
-  html, body{ height:100%; }
+  html, body{ height: auto;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
 
   /* =========================================================
      DASHBOARD
@@ -2196,5 +2198,130 @@
     .modal-toast-container{
       padding: 0 12px;
     }
+  }
+</style>
+<style>
+/* --- ANIMASI DASHBOARD MODERN --- */
+  body.dashboard .brand-title {
+    background: none;
+    color: var(--text);
+    -webkit-background-clip: unset;
+    background-clip: unset;
+    animation: none;
+    filter: none;
+    letter-spacing: 0.04em;
+  }
+
+  body.dashboard .brand-sub {
+    opacity: 0; transform: translateY(12px);
+    animation: dashSubFadeIn 1.2s 0.3s cubic-bezier(.4,1.6,.6,1) forwards;
+  }
+  @keyframes dashSubFadeIn {
+    to { opacity: 1; transform: none; }
+  }
+
+  body.dashboard .topbar {
+    position: relative;
+    overflow: visible;
+    z-index: 1;
+  }
+  body.dashboard .topbar .glow-dot {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--primary, #3b82f6) 0%, var(--primary2, #ff4fd8) 60%, transparent 100%);
+    box-shadow: 0 0 16px 6px var(--primary, #3b82f6), 0 0 32px 12px var(--primary2, #ff4fd8);
+    pointer-events: none;
+    z-index: 10;
+    animation: glowDotMove 4.5s linear infinite;
+  }
+  @keyframes glowDotMove {
+    0%   { left: 10px; top: 10px; }
+    20%  { left: calc(100% - 28px); top: 10px; }
+    50%  { left: calc(100% - 28px); top: calc(100% - 28px); }
+    70%  { left: 10px; top: calc(100% - 28px); }
+    100% { left: 10px; top: 10px; }
+  }
+
+  body.dashboard .field, body.dashboard .field-lg {
+    animation: dashFieldFadeIn 0.8s cubic-bezier(.4,1.6,.6,1);
+    animation-delay: 0.2s;
+    animation-fill-mode: backwards;
+    position: relative;
+    overflow: hidden;
+  }
+  body.dashboard .field input, body.dashboard .field select {
+    transition: box-shadow 0.18s, border 0.18s;
+    box-shadow: none;
+    position: relative;
+    z-index: 1;
+  }
+  body.dashboard .field input:focus, body.dashboard .field select:focus {
+    box-shadow: 0 0 0 2px var(--primary2), 0 2px 12px 0 var(--primary2);
+    border-color: var(--primary2);
+    background: rgba(255,255,255,0.10);
+    transition: box-shadow 0.18s, border 0.18s;
+  }
+  @keyframes dashFieldFadeIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  body.dashboard .btn, body.dashboard .mini-btn {
+    animation: dashBtnPopIn 0.8s 0.3s cubic-bezier(.4,1.6,.6,1) backwards;
+    box-shadow: 0 2px 12px 0 rgba(59,130,246,0.10);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.1s, box-shadow 0.18s;
+  }
+  body.dashboard .btn::after, body.dashboard .mini-btn::after {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    background: linear-gradient(120deg, var(--primary2) 0%, transparent 100%);
+    opacity: 0.10;
+    pointer-events: none;
+    z-index: 0;
+    transition: opacity 0.18s;
+  }
+  body.dashboard .btn:hover::after, body.dashboard .mini-btn:hover::after {
+    opacity: 0.22;
+  }
+  @keyframes dashBtnPopIn {
+    from { opacity: 0; transform: scale(0.96) translateY(18px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  body.dashboard .value-xl {
+    animation: dashValuePop 1.1s cubic-bezier(.4,1.6,.6,1);
+  }
+  @keyframes dashValuePop {
+    from { opacity: 0; transform: scale(0.7) rotate(-10deg); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  body.dashboard .cardx, body.dashboard .panelx, body.dashboard .chart-card, body.dashboard .xcard, body.dashboard .menu-card {
+    animation: dashCardPop 0.8s cubic-bezier(.4,1.6,.6,1);
+  }
+  @keyframes dashCardPop {
+    from { opacity: 0; transform: scale(0.96) translateY(24px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  body.dashboard .report-v.positive, body.dashboard .td-nominal.positive {
+    animation: dashPositivePulse 1.2s infinite alternate;
+  }
+  @keyframes dashPositivePulse {
+    from { filter: brightness(1.1); }
+    to   { filter: brightness(1.4) drop-shadow(0 0 8px var(--primary)); }
+  }
+
+  body.dashboard .pill, body.dashboard .pill.active {
+    animation: dashPillPop 0.7s cubic-bezier(.4,1.6,.6,1);
+  }
+  @keyframes dashPillPop {
+    from { opacity: 0; transform: scale(0.8) translateY(10px); }
+    to   { opacity: 1; transform: none; }
   }
 </style>

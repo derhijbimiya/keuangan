@@ -4,12 +4,266 @@
     <base target="_top">
     <?!= include('stylesApp2'); ?>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style id="themeStyle"></style>
+    <style>
+      /* Agar select dan option selalu kontras di semua tema */
+      .theme-select-wrapper select.styled-select {
+        background: #fff;
+        color: #222;
+        border: 2px solid #bdbdbd;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 1rem;
+        min-width: 120px;
+        outline: none;
+        transition: border 0.2s;
+      }
+      .theme-select-wrapper select.styled-select:focus {
+        border: 2px solid #1976d2;
+      }
+      .theme-select-wrapper option {
+        background: #fff;
+        color: #222;
+      }
+      body.dark .theme-select-wrapper select.styled-select,
+      .theme-select-wrapper select.styled-select.dark {
+        background: #222;
+        color: #fff;
+        border: 2px solid #555;
+      }
+      body.dark .theme-select-wrapper option,
+      .theme-select-wrapper option.dark {
+        background: #222;
+        color: #fff;
+      }
+    </style>
   </head>
   <body>
-    <div class="app2-container">
-      <button class="btn-back-dashboard" onclick="goHome()" title="Kembali ke Dashboard">⟵ Dashboard</button>
-      <div class="app2-title">Keuangan 1</div>
-      <p>Halaman ini akan berisi fitur keuangan 1. Silakan request fitur selanjutnya.</p>
+
+    <div class="shell">
+      <!-- Modern sticky topbar -->
+      <div class="topbar">
+        <div class="topbar-row">
+            <div class="brand">
+              <div class="brand-mark" aria-hidden="true">
+                <img id="brandLogo" src="" alt="Logo" style="width:52px; height:52px; object-fit:contain;">
+              </div>
+              <div class="brand-text">
+                <div class="brand-title">Financial Applications V2</div>
+                <div class="brand-sub">Bendahara</div>
+              </div>
+            </div>
+            <div class="userchip" title="User aktif">
+              <img id="navAvatar" alt="" style="display:none;">
+              <div id="navName" class="nm">-</div>
+            </div>
+            <div class="clockpill" aria-label="Waktu">
+              <div id="navClock" class="t">--:--:--</div>
+              <div id="navDate" class="d">-</div>
+            </div>
+            <div class="top-actions">
+              <button id="navMenuBtn" class="iconbtn menu" onclick="toggleMenu()" aria-label="Menu">
+                <span class="hamb">
+                  <i></i><i></i><i></i>
+                </span>
+              </button>
+            </div>
+        </div>
+      </div>
+
+      <!-- Modal Menu ala dashboard, tapi hanya Ganti Tema & Kembali ke Dashboard -->
+      <div id="menuModal" class="menu-modal" aria-hidden="true" style="display:none;">
+        <div class="backdrop" onclick="toggleMenu(false)"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-label="Menu">
+          <div class="card menu-card">
+            <div class="head">
+              <div class="title">Menu</div>
+              <button class="iconbtn small closex" onclick="toggleMenu(false)" aria-label="Close">×</button>
+            </div>
+            <div class="item">
+              <div class="mini-label">THEME</div>
+              <div class="theme-select-wrapper">
+                <select id="themeSelect" class="styled-select" onchange="changeTheme()"></select>
+                <div class="select-arrow">▼</div>
+              </div>
+            </div>
+            <div class="menu-actions">
+              <button class="btn secondary full" onclick="goHome()">
+                <span class="btn-label"><span>KEMBALI KE DASHBOARD</span></span>
+              </button>
+            </div>
+            <div class="menu-foot">
+              <div class="menu-note">Tips: tekan <b>Esc</b> untuk menutup.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="app2-container">
+        <div class="app2-title">Keuangan 1</div>
+        <p>Halaman ini akan berisi fitur keuangan 1. Silakan request fitur selanjutnya.</p>
+      </div>
     </div>
+
+    <script>
+    // === THEME HANDLING (INTEGRATED WITH BACKEND) ===
+    function applyTheme(res) {
+      if (!res || !res.ok) {
+        console.log('[App2] applyTheme: GAGAL, res:', res);
+        return;
+      }
+      var css = res.active && res.active.css ? res.active.css : '';
+      var styleEl = document.getElementById('themeStyle');
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'themeStyle';
+        document.head.appendChild(styleEl);
+      }
+      styleEl.textContent = css;
+      // Logo
+      var logoImg = document.getElementById('brandLogo');
+      var logoUrl = res.active && res.active.logoUrl ? res.active.logoUrl : '';
+      // Log info tema dan logo
+      console.info('[App2] Tema aktif:', res.active ? res.active.key : '-', '| Logo URL:', logoUrl ? logoUrl : '(tidak ada)');
+      if (logoImg) {
+        if (logoUrl) {
+          logoImg.src = logoUrl;
+          logoImg.style.display = 'block'; // Tampilkan logo sebelum load
+          logoImg.onerror = function(e) {
+            console.error('[App2] Logo gagal dimuat:', logoUrl, e);
+            logoImg.src = 'https://ui-avatars.com/api/?name=Logo'; // Fallback placeholder
+            logoImg.style.display = 'block';
+          };
+          logoImg.onload = function() {
+            logoImg.style.display = 'block';
+          };
+        } else {
+          console.warn('[App2] Logo URL kosong, fallback ke placeholder.');
+          logoImg.src = 'https://ui-avatars.com/api/?name=Logo'; // Fallback jika logoUrl kosong
+          logoImg.style.display = 'block';
+        }
+      }
+      console.log('[App2] applyTheme: BERHASIL, theme:', res.active ? res.active.key : null);
+    }
+    function loadMyTheme() {
+      var sel = document.getElementById('themeSelect');
+      var menuNote = document.querySelector('.menu-note');
+      console.log('[App2] loadMyTheme() dipanggil');
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(function(res) {
+          console.log('[App2] withSuccessHandler dipanggil, hasil:', res);
+          if(!res || !res.ok) {
+            console.error('[App2] Gagal load tema:', res);
+            sel.innerHTML = '';
+            var opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = res && res.message ? res.message : 'Gagal memuat daftar tema. Login/session kadaluarsa.';
+            sel.appendChild(opt);
+            sel.disabled = true;
+            if(menuNote) menuNote.innerHTML = '<span style="color:#ff4d4f">'+opt.textContent+'</span>';
+            // Tampilkan status gagal di bawah dropdown
+            showThemeStatus('❌ Backend TIDAK mengirim data tema!', true);
+            return;
+          }
+          applyTheme(res);
+          sel.innerHTML = '';
+          (res.themes || []).forEach(function(t){
+            var opt = document.createElement('option');
+            opt.value = t.key;
+            opt.textContent = t.name;
+            sel.appendChild(opt);
+          });
+          if (res.active && res.active.key) sel.value = res.active.key;
+          sel.disabled = false;
+          if(menuNote) menuNote.innerHTML = 'Tips: tekan <b>Esc</b> untuk menutup.';
+          // Tampilkan status berhasil di bawah dropdown
+          showThemeStatus('✅ Backend MENGIRIM '+(res.themes ? res.themes.length : 0)+' tema. Tema aktif: '+(res.active ? res.active.key : '-'), false);
+          console.log('[App2] Dropdown tema diisi. Tema aktif:', res.active ? res.active.key : null);
+            // Tampilkan status backend di bawah dropdown
+            function showThemeStatus(msg, isError) {
+              var stat = document.getElementById('themeStatusMsg');
+              if (!stat) {
+                var wrap = document.querySelector('.theme-select-wrapper');
+                stat = document.createElement('div');
+                stat.id = 'themeStatusMsg';
+                stat.style.fontSize = '0.95em';
+                stat.style.marginTop = '4px';
+                stat.style.fontWeight = 'bold';
+                wrap.appendChild(stat);
+              }
+              stat.textContent = msg;
+              stat.style.color = isError ? '#ff4d4f' : '#22bb33';
+            }
+        }).apiThemeGetMyTheme();
+      } else {
+        console.error('[App2] google.script.run tidak tersedia. Tidak bisa load tema.');
+        sel.innerHTML = '';
+        var opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'Fitur tema hanya aktif di Web App Google Apps Script';
+        sel.appendChild(opt);
+        sel.disabled = true;
+        if(menuNote) menuNote.innerHTML = '<span style="color:#ff4d4f">'+opt.textContent+'</span>';
+      }
+      // Log interaksi dropdown
+      sel.addEventListener('click', function(e) {
+        console.log('[App2] Dropdown tema DIBUKA');
+      });
+      sel.addEventListener('change', function(e) {
+        console.log('[App2] Dropdown tema PILIH:', sel.value);
+      });
+    }
+    function changeTheme(){
+      var key = document.getElementById('themeSelect').value;
+      console.log('[App2] changeTheme() dipanggil, key:', key);
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(function(res){
+          console.log('[App2] Hasil set tema:', res);
+          if(res && res.ok) {
+            applyTheme(res);
+            var sel = document.getElementById('themeSelect');
+            if (res.active && res.active.key) sel.value = res.active.key;
+          }
+        }).apiThemeSetMyTheme(key);
+      }
+    }
+
+    // === PROFILE, CLOCK, MENU ===
+    function loadHeader(){
+      // Dummy user for local demo
+      const nama = 'User Demo';
+      document.getElementById('navName').textContent = nama;
+      const img = document.getElementById('navAvatar');
+      img.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(nama);
+      img.style.display = 'block';
+    }
+    function startClock(){
+      const elClock = document.getElementById('navClock');
+      const elDate = document.getElementById('navDate');
+      function tick(){
+        const now = new Date();
+        elClock.textContent = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now);
+        elDate.textContent = new Intl.DateTimeFormat('id-ID', { weekday: 'short', year:'numeric', month:'short', day:'2-digit' }).format(now);
+      }
+      tick();
+      setInterval(tick, 1000);
+    }
+    function toggleMenu(force){
+      const el = document.getElementById('menuModal');
+      const isOpen = el.style.display !== 'none';
+      const next = (typeof force === 'boolean') ? force : !isOpen;
+      el.style.display = next ? 'block' : 'none';
+      el.setAttribute('aria-hidden', next ? 'false' : 'true');
+      document.body.style.overflow = next ? 'hidden' : '';
+    }
+    document.addEventListener('keydown', function(e){
+      if(e.key === 'Escape') toggleMenu(false);
+    });
+    window.addEventListener('DOMContentLoaded', function() {
+      loadMyTheme();
+      loadHeader();
+      startClock();
+    });
+    </script>
   </body>
 </html>
