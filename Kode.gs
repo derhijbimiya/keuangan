@@ -1,5 +1,39 @@
+// =============================================
+// KONFIGURASI TERPUSAT
+// =============================================
+// APP_CONFIG dipindahkan ke file Konfigurasi.gs
+
+// Backward compatibility untuk kode lama yang masih memakai APP2_PAGE_CONFIG
+const APP2_PAGE_CONFIG = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG && APP_CONFIG.APP2_PAGE)
+  ? APP_CONFIG.APP2_PAGE
+  : { BlockApp2: 'Tidak', App2OpenMode: '1' };
+
+function getAppConfigSafe_() {
+  if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG) return APP_CONFIG;
+  return {
+    APP2_PAGE: { BlockApp2: 'Tidak', App2OpenMode: '1' },
+    AUTH: {
+      SESSION_TOKEN_KEY: 'sessionToken',
+      SESSION_SHORT_HOURS: 2,
+      SESSION_LONG_DAYS: 7
+    }
+  };
+}
+
 function getAppUrl() {
   return ScriptApp.getService().getUrl();
+}
+
+function apiGetApp2PageConfig() {
+  return {
+    ok: true,
+    BlockApp2: String(APP2_PAGE_CONFIG.BlockApp2 || 'Tidak'),
+    App2OpenMode: String(APP2_PAGE_CONFIG.App2OpenMode || '1')
+  };
+}
+
+function apiGetCentralConfig() {
+  return { ok: true, config: getAppConfigSafe_() };
 }
 /**
  * Code.gs (FIX blank/white page after login/logout) + URL helpers + apiGetAppUrl

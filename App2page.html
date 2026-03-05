@@ -2,51 +2,23 @@
 <html>
   <head>
     <base target="_top">
+    <?!= include('stylesdashboard'); ?>
     <?!= include('stylesApp2'); ?>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style id="themeStyle"></style>
-    <style>
-      /* Agar select dan option selalu kontras di semua tema */
-      .theme-select-wrapper select.styled-select {
-        background: #fff;
-        color: #222;
-        border: 2px solid #bdbdbd;
-        border-radius: 8px;
-        padding: 8px 12px;
-        font-size: 1rem;
-        min-width: 120px;
-        outline: none;
-        transition: border 0.2s;
-      }
-      .theme-select-wrapper select.styled-select:focus {
-        border: 2px solid #1976d2;
-      }
-      .theme-select-wrapper option {
-        background: #fff;
-        color: #222;
-      }
-      body.dark .theme-select-wrapper select.styled-select,
-      .theme-select-wrapper select.styled-select.dark {
-        background: #222;
-        color: #fff;
-        border: 2px solid #555;
-      }
-      body.dark .theme-select-wrapper option,
-      .theme-select-wrapper option.dark {
-        background: #222;
-        color: #fff;
-      }
-    </style>
   </head>
-  <body>
 
+  <body class="dashboard app2-page">
     <div class="shell">
-      <!-- Modern sticky topbar -->
+      <!-- Modern sticky topbar ala dashboard -->
       <div class="topbar">
         <div class="topbar-row">
             <div class="brand">
               <div class="brand-mark" aria-hidden="true">
-                <img id="brandLogo" src="" alt="Logo" style="width:52px; height:52px; object-fit:contain;">
+                <img id="brandLogo" src="" alt="Logo">
               </div>
               <div class="brand-text">
                 <div class="brand-title">Financial Applications V2</div>
@@ -62,6 +34,11 @@
               <div id="navDate" class="d">-</div>
             </div>
             <div class="top-actions">
+              <div class="project-switch-wrap" title="Pilih project aktif">
+                <select id="projectSelect" class="project-switcher" onchange="onProjectChange()">
+                  <option value="">Memuat project...</option>
+                </select>
+              </div>
               <button id="navMenuBtn" class="iconbtn menu" onclick="toggleMenu()" aria-label="Menu">
                 <span class="hamb">
                   <i></i><i></i><i></i>
@@ -87,9 +64,12 @@
                 <div class="select-arrow">▼</div>
               </div>
             </div>
-            <div class="menu-actions">
-              <button class="btn secondary full" onclick="goHome()">
-                <span class="btn-label"><span>KEMBALI KE DASHBOARD</span></span>
+            <div class="menu-actions app2-menu-actions">
+              <button class="btn secondary full btn-add-project" onclick="openAddProjectModal()">
+                <span class="btn-label"><span style="font-size:1em;">TAMBAH PROJECT</span></span>
+              </button>
+              <button class="btn secondary full btn-back-dashboard" onclick="goHome()">
+                <span class="btn-label"><span style="font-size:1em;">KEMBALI</span></span>
               </button>
             </div>
             <div class="menu-foot">
@@ -99,13 +79,234 @@
         </div>
       </div>
 
-      <div class="app2-container">
-        <div class="app2-title">Keuangan 1</div>
-        <p>Halaman ini akan berisi fitur keuangan 1. Silakan request fitur selanjutnya.</p>
+      <div id="addProjectModal" class="menu-modal" aria-hidden="true" style="display:none;">
+        <div class="backdrop" onclick="toggleAddProjectModal(false)"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-label="Tambah Project">
+          <div class="card menu-card">
+            <div class="head">
+              <div class="title">Tambah Project</div>
+              <button class="iconbtn small closex" onclick="toggleAddProjectModal(false)" aria-label="Close">×</button>
+            </div>
+            <div class="item">
+              <div class="mini-label">NAMA PROJECT</div>
+              <input id="projectNameInput" class="project-input" type="text" maxlength="80" placeholder="Contoh: Project A">
+              <div class="project-note">Catatan: nama project yang sudah dibuat tidak bisa diubah.</div>
+              <div id="projectStatus" class="project-status"></div>
+            </div>
+            <div class="project-modal-actions">
+              <button id="btnSaveProject" class="btn secondary full" onclick="saveProject()">
+                <span class="btn-label"><span>SIMPAN PROJECT</span></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="app2-section">
+        <div class="app2-summary-grid">
+          <div class="app2-summary-card">
+            <div class="app2-card-label">Saldo</div>
+            <div class="app2-card-value" id="cardSaldoProjectAktif">Rp 0</div>
+            <div class="app2-card-note">Saldo project aktif bendahara.</div>
+            <button class="btn secondary full app2-btn-input" onclick="openTransModal()">
+              <span class="btn-label"><span>INPUT TRANSAKSI</span></span>
+            </button>
+          </div>
+
+          <div class="app2-summary-card">
+            <div class="app2-card-label">Saldo Project</div>
+            <div class="app2-card-value" id="cardSaldoSemuaProject">Rp 0</div>
+            <div class="app2-card-note">Total saldo semua project milik user.</div>
+          </div>
+
+          <div class="app2-summary-card">
+            <div class="app2-card-label">Saldo Rekening</div>
+            <div class="app2-card-value" id="cardSaldoGabungan">Rp 0</div>
+            <div class="app2-card-note">Total saldo project dan saldo utama.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="present app2-table-section" id="panelTabelBendahara">
+        <div class="present-head">
+          <div class="table-toolbar">
+            <div class="table-toolbar-left">
+              <div class="mini-label">TABEL TRANSAKSI BENDAHARA</div>
+              <div class="table-export" id="app2TableExportWrap">
+                <button id="app2BtnExportTable" class="btn-page btn-export" type="button" onclick="toggleApp2ExportModal(true)">⬇ Unduh</button>
+              </div>
+            </div>
+            <div class="table-toolbar-right">
+              <select id="app2TablePagination" class="control-select" style="min-width:70px;height:36px;" onchange="changeApp2TablePagination()">
+                <option value="15">15</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="app2FilterTabel" class="filter-table-wrapper" style="margin-top:12px;">
+            <div class="filter-table-date-range">
+              <input id="app2TableDateStartFilter" class="filter-table-input" type="date" placeholder="Dari">
+              <span class="table-date-sep" aria-hidden="true">→</span>
+              <input id="app2TableDateEndFilter" class="filter-table-input" type="date" placeholder="Sampai">
+            </div>
+            <select id="app2TableTypeFilter" class="filter-table-select">
+              <option value="">Semua Jenis</option>
+              <option value="pemasukan">Pemasukan</option>
+              <option value="pengeluaran">Pengeluaran</option>
+            </select>
+            <input id="app2TableSearch" class="filter-table-search" type="text" placeholder="🔍 Cari..." oninput="filterApp2Table()">
+            <button class="btn-clear-mini" type="button" onclick="clearApp2TableFilter()" title="Reset Filter">✕</button>
+          </div>
+        </div>
+
+        <div class="present-body">
+          <div class="table-wrapper">
+            <div id="app2TableWrap" class="table-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ID Transaksi</th>
+                    <th>Tanggal</th>
+                    <th>Jenis</th>
+                    <th>Nominal</th>
+                    <th>Metode</th>
+                    <th>Keterangan</th>
+                    <th>Struck</th>
+                  </tr>
+                </thead>
+                <tbody id="app2TableBody">
+                  <tr><td colspan="7" class="table-empty">Memuat data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="table-pagination">
+            <button id="app2BtnPrevPage" class="btn-page" onclick="goToPrevApp2Page()" disabled>‹ Prev</button>
+            <span id="app2PageInfo" class="page-info">Halaman 1 dari 1</span>
+            <button id="app2BtnNextPage" class="btn-page" onclick="goToNextApp2Page()" disabled>Next ›</button>
+          </div>
+
+          <div class="table-summary">
+            <span id="app2TableSummary">Menampilkan 0 dari 0 data</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="app2ExportModal" class="xmodal" aria-hidden="true" style="display:none;">
+        <div class="xbackdrop" onclick="toggleApp2ExportModal(false)"></div>
+        <div class="xdialog" role="dialog" aria-modal="true" aria-label="Unduh Histori Bendahara">
+          <div class="xcard export-card">
+            <div class="xhead">
+              <div class="xtitle">Unduh Histori Bendahara</div>
+              <button class="iconbtn small" type="button" onclick="toggleApp2ExportModal(false)" aria-label="Tutup">×</button>
+            </div>
+            <div class="xbody">
+              <div class="export-form">
+                <div class="export-field">
+                  <div class="mini-label">FORMAT FILE</div>
+                  <select id="app2ExportFileType" class="styled-select export-select">
+                    <option value="pdf">PDF (.pdf)</option>
+                    <option value="excel">Excel (.xlsx)</option>
+                  </select>
+                </div>
+
+                <div class="export-field">
+                  <div class="mini-label">RANGE TANGGAL (OPSIONAL)</div>
+                  <div class="export-date-row">
+                    <input id="app2ExportDateStart" class="date-input export-date" type="date">
+                    <span class="export-date-sep">→</span>
+                    <input id="app2ExportDateEnd" class="date-input export-date" type="date">
+                  </div>
+                </div>
+
+                <div id="app2ExportStatus" class="project-status"></div>
+                <button class="btn full" type="button" onclick="exportCurrentApp2TableFromModal()">UNDUH</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="transModal" class="menu-modal" aria-hidden="true" style="display:none;">
+        <div class="backdrop" onclick="toggleTransModal(false)"></div>
+        <div class="dialog" role="dialog" aria-modal="true" aria-label="Input Transaksi Bendahara">
+          <div class="card menu-card trans-card">
+            <div class="head">
+              <div class="title">Input Transaksi Bendahara</div>
+              <button class="iconbtn small closex" onclick="toggleTransModal(false)" aria-label="Close">×</button>
+            </div>
+
+            <div class="item trans-form-grid">
+              <div class="trans-field">
+                <div class="mini-label">PROJECT</div>
+                <input id="transProjectName" class="project-input" type="text" disabled>
+              </div>
+
+              <div class="trans-field">
+                <div class="mini-label">TANGGAL</div>
+                <input id="transTanggal" class="project-input" type="date">
+              </div>
+
+              <div class="trans-field">
+                <div class="mini-label">JENIS</div>
+                <select id="transJenis" class="project-input">
+                  <option value="pengeluaran">Pengeluaran</option>
+                  <option value="pemasukan">Pemasukan</option>
+                </select>
+              </div>
+
+              <div class="trans-field">
+                <div class="mini-label">NOMINAL</div>
+                <input id="transNominal" class="project-input" type="number" min="1" step="1" placeholder="Contoh: 100000">
+              </div>
+
+              <div class="trans-field">
+                <div class="mini-label">METODE BENDAHARA</div>
+                <select id="transMetode" class="project-input">
+                  <option value="">Memuat metode...</option>
+                </select>
+                <div id="transMetodeSaldoInfo" class="project-note">Saldo metode: -</div>
+              </div>
+
+              <div class="trans-field trans-field-full">
+                <div class="mini-label">KETERANGAN</div>
+                <textarea id="transKeterangan" class="project-input trans-textarea" placeholder="Keterangan transaksi"></textarea>
+              </div>
+
+              <div class="trans-field trans-field-full">
+                <div class="mini-label">STRUCK (OPSIONAL)</div>
+                <input id="transStruck" class="project-input" type="file" accept="image/*,.pdf" multiple>
+                <div id="transStruckInfo" class="project-note">Belum ada file dipilih (bisa lebih dari 1).</div>
+              </div>
+            </div>
+
+            <div id="transStatus" class="project-status"></div>
+            <div class="project-modal-actions">
+              <button id="btnSaveTransaksi" class="btn secondary full" onclick="saveBendaharaTransaksi()">
+                <span class="btn-label"><span>SIMPAN TRANSAKSI</span></span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
+    <div id="app2ToastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
     <script>
+    var APP2_SELECTED_PROJECT = '';
+    var APP2_METODE = [];
+    var APP2_TABLE = {
+      rows: [],
+      filtered: [],
+      currentPage: 1,
+      itemsPerPage: 15
+    };
+
     // === THEME HANDLING (INTEGRATED WITH BACKEND) ===
     function applyTheme(res) {
       if (!res || !res.ok) {
@@ -161,8 +362,6 @@
             sel.appendChild(opt);
             sel.disabled = true;
             if(menuNote) menuNote.innerHTML = '<span style="color:#ff4d4f">'+opt.textContent+'</span>';
-            // Tampilkan status gagal di bawah dropdown
-            showThemeStatus('❌ Backend TIDAK mengirim data tema!', true);
             return;
           }
           applyTheme(res);
@@ -176,24 +375,7 @@
           if (res.active && res.active.key) sel.value = res.active.key;
           sel.disabled = false;
           if(menuNote) menuNote.innerHTML = 'Tips: tekan <b>Esc</b> untuk menutup.';
-          // Tampilkan status berhasil di bawah dropdown
-          showThemeStatus('✅ Backend MENGIRIM '+(res.themes ? res.themes.length : 0)+' tema. Tema aktif: '+(res.active ? res.active.key : '-'), false);
           console.log('[App2] Dropdown tema diisi. Tema aktif:', res.active ? res.active.key : null);
-            // Tampilkan status backend di bawah dropdown
-            function showThemeStatus(msg, isError) {
-              var stat = document.getElementById('themeStatusMsg');
-              if (!stat) {
-                var wrap = document.querySelector('.theme-select-wrapper');
-                stat = document.createElement('div');
-                stat.id = 'themeStatusMsg';
-                stat.style.fontSize = '0.95em';
-                stat.style.marginTop = '4px';
-                stat.style.fontWeight = 'bold';
-                wrap.appendChild(stat);
-              }
-              stat.textContent = msg;
-              stat.style.color = isError ? '#ff4d4f' : '#22bb33';
-            }
         }).apiThemeGetMyTheme();
       } else {
         console.error('[App2] google.script.run tidak tersedia. Tidak bisa load tema.');
@@ -229,13 +411,51 @@
     }
 
     // === PROFILE, CLOCK, MENU ===
+    function goHome(){
+      // Always try backend first, fallback to root
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        try {
+          google.script.run.withSuccessHandler(function(url){
+            if (url && typeof url === 'string') {
+              window.top.location.href = url;
+            } else {
+              window.top.location.href = '/';
+            }
+          }).getHomeUrl();
+        } catch(e) {
+          window.top.location.href = '/';
+        }
+      } else {
+        window.top.location.href = '/';
+      }
+    }
     function loadHeader(){
-      // Dummy user for local demo
-      const nama = 'User Demo';
-      document.getElementById('navName').textContent = nama;
-      const img = document.getElementById('navAvatar');
-      img.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(nama);
-      img.style.display = 'block';
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(function(res){
+          if(!res || !res.ok) return;
+          const nama = res.nama || res.username || '-';
+          document.getElementById('navName').textContent = nama;
+          const img = document.getElementById('navAvatar');
+          if (res.fotoUrl) {
+            img.src = res.fotoUrl;
+            img.style.display = 'block';
+            img.onerror = function() {
+              img.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(nama);
+              img.onerror = null;
+            };
+          } else {
+            img.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(nama);
+            img.style.display = 'block';
+          }
+        }).apiDashboardHeader();
+      } else {
+        // Fallback dummy jika tidak di webapp
+        const nama = 'User Demo';
+        document.getElementById('navName').textContent = nama;
+        const img = document.getElementById('navAvatar');
+        img.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(nama);
+        img.style.display = 'block';
+      }
     }
     function startClock(){
       const elClock = document.getElementById('navClock');
@@ -256,13 +476,907 @@
       el.setAttribute('aria-hidden', next ? 'false' : 'true');
       document.body.style.overflow = next ? 'hidden' : '';
     }
+
+    function toggleAddProjectModal(force){
+      const el = document.getElementById('addProjectModal');
+      const isOpen = el.style.display !== 'none';
+      const next = (typeof force === 'boolean') ? force : !isOpen;
+      el.style.display = next ? 'block' : 'none';
+      el.setAttribute('aria-hidden', next ? 'false' : 'true');
+      document.body.style.overflow = next ? 'hidden' : '';
+      if (next) {
+        const input = document.getElementById('projectNameInput');
+        const status = document.getElementById('projectStatus');
+        if (status) status.textContent = '';
+        setTimeout(function(){ if (input) input.focus(); }, 60);
+      }
+    }
+
+    function openAddProjectModal(){
+      toggleMenu(false);
+      toggleAddProjectModal(true);
+    }
+
+    function setProjectStatus(msg, isError){
+      const el = document.getElementById('projectStatus');
+      if (!el) return;
+      el.textContent = msg || '';
+      el.style.color = isError ? '#ff5f7a' : 'var(--ok, #22c55e)';
+    }
+
+    function setProjectLoading(on){
+      const btn = document.getElementById('btnSaveProject');
+      if (!btn) return;
+      btn.disabled = !!on;
+      btn.style.opacity = on ? '0.7' : '1';
+      btn.style.cursor = on ? 'not-allowed' : 'pointer';
+    }
+
+    function formatRupiah(v){
+      var n = Number(v || 0) || 0;
+      return 'Rp ' + new Intl.NumberFormat('id-ID').format(n);
+    }
+
+    function showApp2Toast(message, type, title){
+      var container = document.getElementById('app2ToastContainer');
+      if (!container) return;
+
+      var level = String(type || 'info').toLowerCase();
+      if (['success', 'error', 'warning', 'info'].indexOf(level) < 0) level = 'info';
+
+      var iconMap = {
+        success: '✓',
+        error: '✕',
+        warning: '⚠',
+        info: 'ℹ'
+      };
+
+      var titleMap = {
+        success: 'Berhasil',
+        error: 'Gagal',
+        warning: 'Peringatan',
+        info: 'Info'
+      };
+
+      var toast = document.createElement('div');
+      toast.className = 'toast ' + level;
+      toast.innerHTML = [
+        '<div class="toast-icon">' + iconMap[level] + '</div>',
+        '<div class="toast-content">',
+          '<div class="toast-title">' + escapeHtml_(title || titleMap[level]) + '</div>',
+          '<div class="toast-message">' + escapeHtml_(message || '') + '</div>',
+        '</div>',
+        '<button class="toast-close" type="button" aria-label="Tutup">×</button>'
+      ].join('');
+
+      var closeBtn = toast.querySelector('.toast-close');
+      var removeToast = function(){
+        if (!toast || !toast.parentNode) return;
+        toast.classList.add('removing');
+        setTimeout(function(){
+          if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 250);
+      };
+
+      if (closeBtn) closeBtn.addEventListener('click', removeToast);
+
+      container.appendChild(toast);
+      setTimeout(removeToast, 4200);
+    }
+
+    function setCardValues(summary){
+      var saldoProjectAktif = document.getElementById('cardSaldoProjectAktif');
+      var saldoSemuaProject = document.getElementById('cardSaldoSemuaProject');
+      var saldoGabungan = document.getElementById('cardSaldoGabungan');
+      if (saldoProjectAktif) saldoProjectAktif.textContent = formatRupiah(summary.saldoProjectAktif || 0);
+      if (saldoSemuaProject) saldoSemuaProject.textContent = formatRupiah(summary.saldoSemuaProject || 0);
+      if (saldoGabungan) saldoGabungan.textContent = formatRupiah(summary.saldoRekening || 0);
+    }
+
+    function fmtNum(v){
+      return new Intl.NumberFormat('id-ID').format(Number(v || 0) || 0);
+    }
+
+    function escapeHtml_(value){
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatDate_(dateStr){
+      if (!dateStr) return '-';
+      var parts = String(dateStr).split('-');
+      if (parts.length === 3) return parts[2] + '/' + parts[1] + '/' + parts[0];
+      return String(dateStr);
+    }
+
+    function renderStruckCell_(url){
+      var clean = String(url || '').trim();
+      if (!clean) return '-';
+      return '<a href="' + escapeHtml_(clean) + '" target="_blank" rel="noopener noreferrer">Buka</a>';
+    }
+
+    function loadBendaharaTableData(){
+      var tbody = document.getElementById('app2TableBody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="table-empty">Memuat data...</td></tr>';
+
+      if (!(typeof google !== 'undefined' && google.script && google.script.run)) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="table-empty">Google Script tidak tersedia</td></tr>';
+        return;
+      }
+
+      google.script.run.withSuccessHandler(function(res){
+        if (!res || !res.ok) {
+          APP2_TABLE.rows = [];
+          APP2_TABLE.filtered = [];
+          renderApp2Table();
+          return;
+        }
+
+        APP2_TABLE.rows = Array.isArray(res.rows) ? res.rows : [];
+        APP2_TABLE.filtered = APP2_TABLE.rows.slice();
+        APP2_TABLE.currentPage = 1;
+        filterApp2Table();
+      }).withFailureHandler(function(){
+        APP2_TABLE.rows = [];
+        APP2_TABLE.filtered = [];
+        renderApp2Table();
+      }).apiBendaharaGetTableData({ projectName: APP2_SELECTED_PROJECT || '' });
+    }
+
+    function filterApp2Table(){
+      var dateStart = (document.getElementById('app2TableDateStartFilter').value || '').trim();
+      var dateEnd = (document.getElementById('app2TableDateEndFilter').value || '').trim();
+      var typeFilter = (document.getElementById('app2TableTypeFilter').value || '').trim().toLowerCase();
+      var searchQuery = (document.getElementById('app2TableSearch').value || '').trim().toLowerCase();
+
+      var normalizedStart = (dateStart && dateEnd && dateStart > dateEnd) ? dateEnd : dateStart;
+      var normalizedEnd = (dateStart && dateEnd && dateStart > dateEnd) ? dateStart : dateEnd;
+
+      APP2_TABLE.filtered = APP2_TABLE.rows.filter(function(row){
+        var rowDate = String(row.tanggal || '').trim();
+        if (normalizedStart && rowDate < normalizedStart) return false;
+        if (normalizedEnd && rowDate > normalizedEnd) return false;
+
+        if (typeFilter) {
+          var jenis = String(row.jenis || '').toLowerCase();
+          if (jenis !== typeFilter) return false;
+        }
+
+        if (searchQuery) {
+          var text = [
+            row.idTransaksi,
+            row.tanggal,
+            row.jenis,
+            row.nominal,
+            row.metode,
+            row.keterangan,
+            row.project
+          ].join(' ').toLowerCase();
+          if (text.indexOf(searchQuery) < 0) return false;
+        }
+
+        return true;
+      });
+
+      APP2_TABLE.currentPage = 1;
+      renderApp2Table();
+    }
+
+    function renderApp2Table(){
+      var tbody = document.getElementById('app2TableBody');
+      if (!tbody) return;
+
+      var data = APP2_TABLE.filtered || [];
+      var totalItems = data.length;
+      var totalPages = Math.ceil(totalItems / APP2_TABLE.itemsPerPage) || 1;
+      var startIdx = (APP2_TABLE.currentPage - 1) * APP2_TABLE.itemsPerPage;
+      var endIdx = Math.min(startIdx + APP2_TABLE.itemsPerPage, totalItems);
+      var pageData = data.slice(startIdx, endIdx);
+
+      if (!pageData.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="table-empty">Tidak ada data</td></tr>';
+      } else {
+        tbody.innerHTML = pageData.map(function(row){
+          var jenis = String(row.jenis || '-').toLowerCase();
+          var nominal = Number(row.nominal || 0) || 0;
+          var nominalClass = nominal >= 0 ? 'positive' : 'negative';
+          var nominalSign = nominal >= 0 ? '+' : '-';
+          var badgeClass = jenis === 'pemasukan' ? 'pemasukan' : (jenis === 'pengeluaran' ? 'pengeluaran' : 'tabungan');
+          return [
+            '<tr>',
+              '<td class="td-id">' + escapeHtml_(row.idTransaksi || '-') + '</td>',
+              '<td class="td-date">' + escapeHtml_(formatDate_(row.tanggal)) + '</td>',
+              '<td><span class="td-keperluan ' + badgeClass + '">' + escapeHtml_((row.jenis || '-').toUpperCase()) + '</span></td>',
+              '<td class="td-nominal ' + nominalClass + '">' + nominalSign + fmtNum(Math.abs(nominal)) + '</td>',
+              '<td>' + escapeHtml_(row.metode || '-') + '</td>',
+              '<td class="td-keterangan" title="' + escapeHtml_(row.keterangan || '-') + '">' + escapeHtml_(row.keterangan || '-') + '</td>',
+              '<td>' + renderStruckCell_(row.struck) + '</td>',
+            '</tr>'
+          ].join('');
+        }).join('');
+      }
+
+      document.getElementById('app2PageInfo').textContent = 'Halaman ' + APP2_TABLE.currentPage + ' dari ' + totalPages;
+      document.getElementById('app2BtnPrevPage').disabled = APP2_TABLE.currentPage === 1;
+      document.getElementById('app2BtnNextPage').disabled = APP2_TABLE.currentPage === totalPages;
+
+      var summaryEl = document.getElementById('app2TableSummary');
+      if (summaryEl) {
+        if (totalItems === 0) {
+          summaryEl.textContent = 'Menampilkan 0 dari 0 data';
+        } else {
+          summaryEl.textContent = 'Menampilkan ' + (startIdx + 1) + '-' + endIdx + ' dari ' + totalItems + ' data';
+        }
+      }
+    }
+
+    function changeApp2TablePagination(){
+      APP2_TABLE.itemsPerPage = parseInt(document.getElementById('app2TablePagination').value, 10) || 15;
+      APP2_TABLE.currentPage = 1;
+      renderApp2Table();
+    }
+
+    function goToPrevApp2Page(){
+      if (APP2_TABLE.currentPage > 1) {
+        APP2_TABLE.currentPage--;
+        renderApp2Table();
+      }
+    }
+
+    function goToNextApp2Page(){
+      var totalPages = Math.ceil((APP2_TABLE.filtered || []).length / APP2_TABLE.itemsPerPage) || 1;
+      if (APP2_TABLE.currentPage < totalPages) {
+        APP2_TABLE.currentPage++;
+        renderApp2Table();
+      }
+    }
+
+    function clearApp2TableFilter(){
+      document.getElementById('app2TableDateStartFilter').value = '';
+      document.getElementById('app2TableDateEndFilter').value = '';
+      document.getElementById('app2TableTypeFilter').selectedIndex = 0;
+      document.getElementById('app2TableSearch').value = '';
+      filterApp2Table();
+    }
+
+    function setApp2ExportStatus(msg, isError){
+      var el = document.getElementById('app2ExportStatus');
+      if (!el) return;
+      el.textContent = msg || '';
+      el.style.color = isError ? '#ff5f7a' : 'var(--ok, #22c55e)';
+    }
+
+    function toggleApp2ExportModal(force){
+      var el = document.getElementById('app2ExportModal');
+      if (!el) return;
+      var isOpen = el.style.display !== 'none';
+      var next = (typeof force === 'boolean') ? force : !isOpen;
+      el.style.display = next ? 'block' : 'none';
+      el.setAttribute('aria-hidden', next ? 'false' : 'true');
+      document.body.style.overflow = next ? 'hidden' : '';
+
+      if (next) {
+        var fileType = document.getElementById('app2ExportFileType');
+        var start = document.getElementById('app2ExportDateStart');
+        var end = document.getElementById('app2ExportDateEnd');
+        if (fileType) fileType.value = 'pdf';
+        if (start) start.value = '';
+        if (end) end.value = '';
+      }
+      setApp2ExportStatus('', false);
+    }
+
+    function normalizeDateRange_(start, end){
+      var a = String(start || '').trim();
+      var b = String(end || '').trim();
+      if (a && b && a > b) {
+        return { start: b, end: a };
+      }
+      return { start: a, end: b };
+    }
+
+    function getApp2ExportTableRows_(rows){
+      return rows.map(function(row){
+        var nominal = Number(row.nominal || 0) || 0;
+        var nominalText = (nominal >= 0 ? '+' : '-') + fmtNum(Math.abs(nominal));
+        return [
+          String(row.idTransaksi || '-'),
+          formatDate_(row.tanggal),
+          String(row.jenis || '-').toUpperCase(),
+          nominalText,
+          String(row.metode || '-'),
+          String(row.keterangan || '-'),
+          String(row.struck || '-')
+        ];
+      });
+    }
+
+    function downloadBlob_(blob, filename){
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(function(){
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+    }
+
+    function exportApp2RowsCsv_(rows, filename){
+      var headers = ['ID Transaksi', 'Tanggal', 'Jenis', 'Nominal', 'Metode', 'Keterangan', 'Struck'];
+      var tableRows = getApp2ExportTableRows_(rows);
+      var csv = [headers].concat(tableRows).map(function(cols){
+        return cols.map(function(v){
+          var text = String(v == null ? '' : v).replace(/"/g, '""');
+          return '"' + text + '"';
+        }).join(',');
+      }).join('\n');
+      var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      downloadBlob_(blob, filename);
+    }
+
+    function exportApp2RowsExcel_(rows, filename){
+      if (!(window.XLSX && window.XLSX.utils && window.XLSX.writeFile)) {
+        exportApp2RowsCsv_(rows, filename.replace(/\.xlsx$/i, '.csv'));
+        return;
+      }
+
+      var headers = ['ID Transaksi', 'Tanggal', 'Jenis', 'Nominal', 'Metode', 'Keterangan', 'Struck'];
+      var tableRows = getApp2ExportTableRows_(rows);
+      var ws = XLSX.utils.aoa_to_sheet([headers].concat(tableRows));
+      ws['!cols'] = [
+        { wch: 16 },
+        { wch: 14 },
+        { wch: 14 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 36 },
+        { wch: 36 }
+      ];
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Histori Bendahara');
+      XLSX.writeFile(wb, filename);
+    }
+
+    function exportApp2RowsPdf_(rows, filename){
+      if (!(window.jspdf && window.jspdf.jsPDF)) {
+        exportApp2RowsCsv_(rows, filename.replace(/\.pdf$/i, '.csv'));
+        return;
+      }
+
+      var jsPDF = window.jspdf.jsPDF;
+      var doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      var headers = [['ID Transaksi', 'Tanggal', 'Jenis', 'Nominal', 'Metode', 'Keterangan', 'Struck']];
+      var body = getApp2ExportTableRows_(rows);
+
+      doc.setFontSize(13);
+      doc.text('Histori Tabel Bendahara', 40, 36);
+      if (typeof doc.autoTable === 'function') {
+        doc.autoTable({
+          head: headers,
+          body: body,
+          startY: 50,
+          styles: { fontSize: 8, cellPadding: 4, valign: 'middle' },
+          headStyles: { fillColor: [59, 130, 246], textColor: 255 },
+          alternateRowStyles: { fillColor: [245, 247, 252] },
+          tableLineColor: [220, 226, 235],
+          tableLineWidth: 0.2
+        });
+      }
+      doc.save(filename);
+    }
+
+    function exportCurrentApp2TableFromModal(){
+      var fileTypeEl = document.getElementById('app2ExportFileType');
+      var fileType = String(fileTypeEl && fileTypeEl.value ? fileTypeEl.value : 'pdf').toLowerCase();
+      var startInput = document.getElementById('app2ExportDateStart');
+      var endInput = document.getElementById('app2ExportDateEnd');
+      var startValue = String(startInput && startInput.value ? startInput.value : '').trim();
+      var endValue = String(endInput && endInput.value ? endInput.value : '').trim();
+
+      var rangeStart = startValue;
+      var rangeEnd = endValue;
+      var now = new Date();
+      var toYmd = function(d){
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      };
+
+      if (!rangeStart && !rangeEnd) {
+        var oneYearAgo = new Date(now);
+        oneYearAgo.setFullYear(now.getFullYear() - 1);
+        rangeStart = toYmd(oneYearAgo);
+        rangeEnd = toYmd(now);
+      } else if (!rangeStart || !rangeEnd) {
+        setApp2ExportStatus('Isi kedua tanggal atau kosongkan keduanya.', true);
+        return;
+      }
+
+      if (rangeStart > rangeEnd) {
+        setApp2ExportStatus('Tanggal mulai tidak boleh lebih besar dari tanggal akhir.', true);
+        return;
+      }
+
+      var diffMs = Math.abs(new Date(rangeEnd) - new Date(rangeStart));
+      var diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays > 366) {
+        setApp2ExportStatus('Rentang unduh maksimal 1 tahun.', true);
+        return;
+      }
+
+      var range = normalizeDateRange_(rangeStart, rangeEnd);
+      var rows = (APP2_TABLE.rows || []).filter(function(row){
+        var rowDate = String(row.tanggal || '').trim();
+        if (!rowDate) return false;
+        return rowDate >= range.start && rowDate <= range.end;
+      });
+
+      if (!rows.length) {
+        setApp2ExportStatus('Tidak ada data untuk diunduh.', true);
+        return;
+      }
+
+      var safeStart = String(range.start || '').replace(/[^0-9]/g, '');
+      var safeEnd = String(range.end || '').replace(/[^0-9]/g, '');
+      var stamp = String(now.getFullYear()) + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+
+      try {
+        if (fileType === 'excel') {
+          exportApp2RowsExcel_(rows, 'bendahara_' + safeStart + '_' + safeEnd + '_' + stamp + '.xlsx');
+        } else {
+          exportApp2RowsPdf_(rows, 'bendahara_' + safeStart + '_' + safeEnd + '_' + stamp + '.pdf');
+        }
+        toggleApp2ExportModal(false);
+      } catch (err) {
+        setApp2ExportStatus('Gagal unduh histori: ' + (err && err.message ? err.message : err), true);
+      }
+    }
+
+    function refreshSummaryCards(){
+      if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+      google.script.run.withSuccessHandler(function(res){
+        if (!res || !res.ok) return;
+        setCardValues(res);
+      }).apiBendaharaSummary({ projectName: APP2_SELECTED_PROJECT || '' });
+    }
+
+    function setTransStatus(msg, isError){
+      var el = document.getElementById('transStatus');
+      if (!el) return;
+      el.textContent = msg || '';
+      el.style.color = isError ? '#ff5f7a' : 'var(--ok, #22c55e)';
+    }
+
+    function setTransLoading(on){
+      var btn = document.getElementById('btnSaveTransaksi');
+      if (!btn) return;
+      btn.disabled = !!on;
+      btn.style.opacity = on ? '0.7' : '1';
+      btn.style.cursor = on ? 'not-allowed' : 'pointer';
+    }
+
+    function setTransMetodeSaldoInfo(message, isError){
+      var el = document.getElementById('transMetodeSaldoInfo');
+      if (!el) return;
+      el.textContent = message || 'Saldo metode: -';
+      el.style.color = isError ? '#ff5f7a' : 'var(--text-soft, rgba(255,255,255,.7))';
+    }
+
+    function refreshTransMetodeSaldoInfo(){
+      var sel = document.getElementById('transMetode');
+      if (!sel) return;
+      var metode = String(sel.value || '').trim();
+      if (!metode) {
+        setTransMetodeSaldoInfo('Saldo metode: pilih metode terlebih dulu.', false);
+        return;
+      }
+
+      if (!(typeof google !== 'undefined' && google.script && google.script.run)) {
+        setTransMetodeSaldoInfo('Saldo metode: hanya tersedia di Web App.', true);
+        return;
+      }
+
+      setTransMetodeSaldoInfo('Saldo metode: memuat...', false);
+      google.script.run.withSuccessHandler(function(res){
+        if (!res || !res.ok) {
+          var errMsg = (res && res.message) ? String(res.message) : 'Tidak bisa memuat saldo metode.';
+          setTransMetodeSaldoInfo('Saldo metode: tidak bisa dilihat (' + errMsg + ')', true);
+          return;
+        }
+
+        if (res.canView === false || res.isCash) {
+          setTransMetodeSaldoInfo('Saldo metode: tidak bisa dilihat untuk metode ini.', false);
+          return;
+        }
+
+        setTransMetodeSaldoInfo('Saldo metode sekarang: ' + formatRupiah(res.saldo || 0), false);
+      }).withFailureHandler(function(err){
+        setTransMetodeSaldoInfo('Saldo metode: gagal memuat (' + (err && err.message ? err.message : err) + ')', true);
+      }).apiGetSaldoMetodeAktif(metode);
+    }
+
+    function loadMetodeOptions(preferred){
+      var sel = document.getElementById('transMetode');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Memuat metode...</option>';
+      setTransMetodeSaldoInfo('Saldo metode: memuat...', false);
+      if (!(typeof google !== 'undefined' && google.script && google.script.run)) {
+        sel.innerHTML = '<option value="">Metode hanya aktif di Web App</option>';
+        setTransMetodeSaldoInfo('Saldo metode: hanya tersedia di Web App.', true);
+        return;
+      }
+      google.script.run.withSuccessHandler(function(res){
+        if (!res || !res.ok) {
+          sel.innerHTML = '<option value="">Gagal memuat metode</option>';
+          setTransMetodeSaldoInfo('Saldo metode: gagal memuat daftar metode.', true);
+          return;
+        }
+        APP2_METODE = Array.isArray(res.metode) ? res.metode : [];
+        sel.innerHTML = '';
+        if (!APP2_METODE.length) {
+          sel.innerHTML = '<option value="">Belum ada metode</option>';
+          setTransMetodeSaldoInfo('Saldo metode: belum ada metode.', false);
+          return;
+        }
+        APP2_METODE.forEach(function(m){
+          var opt = document.createElement('option');
+          opt.value = m;
+          opt.textContent = m;
+          sel.appendChild(opt);
+        });
+        if (preferred && APP2_METODE.indexOf(preferred) >= 0) {
+          sel.value = preferred;
+        }
+        refreshTransMetodeSaldoInfo();
+      }).withFailureHandler(function(){
+        sel.innerHTML = '<option value="">Gagal memuat metode</option>';
+        setTransMetodeSaldoInfo('Saldo metode: gagal memuat daftar metode.', true);
+      }).apiBendaharaListMetode();
+    }
+
+    function toggleTransModal(force){
+      var el = document.getElementById('transModal');
+      if (!el) return;
+      var isOpen = el.style.display !== 'none';
+      var next = (typeof force === 'boolean') ? force : !isOpen;
+      el.style.display = next ? 'block' : 'none';
+      el.setAttribute('aria-hidden', next ? 'false' : 'true');
+      document.body.style.overflow = next ? 'hidden' : '';
+    }
+
+    function openTransModal(){
+      if (!APP2_SELECTED_PROJECT) {
+        setTransStatus('Pilih project dulu sebelum input transaksi.', true);
+        return;
+      }
+
+      var projectInput = document.getElementById('transProjectName');
+      var tanggalInput = document.getElementById('transTanggal');
+      var jenis = document.getElementById('transJenis');
+      var nominal = document.getElementById('transNominal');
+      var ket = document.getElementById('transKeterangan');
+      var fileInput = document.getElementById('transStruck');
+      var fileInfo = document.getElementById('transStruckInfo');
+
+      if (projectInput) projectInput.value = APP2_SELECTED_PROJECT;
+      if (tanggalInput) tanggalInput.value = new Date().toISOString().slice(0, 10);
+      if (jenis) jenis.value = 'pengeluaran';
+      if (nominal) nominal.value = '';
+      if (ket) ket.value = '';
+      if (fileInput) fileInput.value = '';
+      if (fileInfo) fileInfo.textContent = 'Belum ada file dipilih (bisa lebih dari 1).';
+      setTransStatus('', false);
+      setTransMetodeSaldoInfo('Saldo metode: memuat...', false);
+      loadMetodeOptions();
+      toggleTransModal(true);
+    }
+
+    function readStruckFilesForUpload_(files, done){
+      if (!Array.isArray(files) || files.length === 0) {
+        done({ ok: true, files: [] });
+        return;
+      }
+
+      var output = [];
+      var idx = 0;
+
+      function next(){
+        if (idx >= files.length) {
+          done({ ok: true, files: output });
+          return;
+        }
+
+        var file = files[idx];
+        var reader = new FileReader();
+        reader.onload = function(evt){
+          var result = String(evt && evt.target && evt.target.result || '');
+          var comma = result.indexOf(',');
+          var base64 = comma >= 0 ? result.slice(comma + 1) : result;
+          output.push({
+            filename: file.name,
+            mimeType: file.type || 'application/octet-stream',
+            base64: base64
+          });
+          idx += 1;
+          next();
+        };
+        reader.onerror = function(){
+          done({ ok: false, message: 'Gagal membaca file struck: ' + (file && file.name ? file.name : '-') });
+        };
+        reader.readAsDataURL(file);
+      }
+
+      next();
+    }
+
+    function uploadStruckIfAny(done){
+      var fileInput = document.getElementById('transStruck');
+      var files = fileInput && fileInput.files ? Array.from(fileInput.files) : [];
+      if (!files.length) {
+        done({ ok: true, url: '' });
+        return;
+      }
+
+      readStruckFilesForUpload_(files, function(readRes){
+        if (!readRes || !readRes.ok) {
+          done(readRes || { ok: false, message: 'Gagal membaca file struck.' });
+          return;
+        }
+
+        google.script.run.withSuccessHandler(function(res){
+          done(res || { ok: false, message: 'Upload struck gagal.' });
+        }).withFailureHandler(function(err){
+          done({ ok: false, message: 'Gagal upload struck: ' + (err && err.message ? err.message : err) });
+        }).apiUploadStruck({
+          files: readRes.files,
+          projectName: APP2_SELECTED_PROJECT || ''
+        });
+      });
+    }
+
+    function saveBendaharaTransaksi(){
+      if (!(typeof google !== 'undefined' && google.script && google.script.run)) {
+        setTransStatus('google.script.run tidak tersedia.', true);
+        return;
+      }
+      if (!APP2_SELECTED_PROJECT) {
+        setTransStatus('Project aktif belum dipilih.', true);
+        return;
+      }
+
+      var tanggal = (document.getElementById('transTanggal').value || '').trim();
+      var jenis = (document.getElementById('transJenis').value || '').trim();
+      var nominal = Number(document.getElementById('transNominal').value || 0) || 0;
+      var metode = (document.getElementById('transMetode').value || '').trim();
+      var keterangan = (document.getElementById('transKeterangan').value || '').trim();
+
+      if (!tanggal) {
+        setTransStatus('Tanggal wajib diisi.', true);
+        return;
+      }
+      if (!(jenis === 'pengeluaran' || jenis === 'pemasukan')) {
+        setTransStatus('Jenis transaksi tidak valid.', true);
+        return;
+      }
+      if (!(nominal > 0)) {
+        setTransStatus('Nominal wajib lebih dari 0.', true);
+        return;
+      }
+      if (!metode) {
+        setTransStatus('Metode bendahara wajib dipilih.', true);
+        return;
+      }
+
+      setTransLoading(true);
+      setTransStatus('Menyimpan transaksi...', false);
+
+      uploadStruckIfAny(function(uploadRes){
+        if (!uploadRes || !uploadRes.ok) {
+          setTransLoading(false);
+          setTransStatus((uploadRes && uploadRes.message) || 'Upload struck gagal.', true);
+          return;
+        }
+
+        var payload = {
+          projectName: APP2_SELECTED_PROJECT,
+          tanggal: tanggal,
+          pengeluaran: jenis === 'pengeluaran' ? nominal : 0,
+          pemasukan: jenis === 'pemasukan' ? nominal : 0,
+          metode: metode,
+          keterangan: keterangan,
+          struckUrl: uploadRes.url || ''
+        };
+
+        google.script.run.withSuccessHandler(function(res){
+          setTransLoading(false);
+          if (!res || !res.ok) {
+            var msg = (res && res.message) || 'Gagal menyimpan transaksi.';
+            if (res && res.code === 'SALDO_METODE_TIDAK_CUKUP') {
+              msg += ' (Metode: ' + (res.metode || '-') + ', Saldo: ' + formatRupiah(res.saldoMetode || 0) + ', Kekurangan: ' + formatRupiah(res.kekurangan || 0) + ')';
+              showApp2Toast(msg, 'error', 'Saldo Metode Kurang');
+            }
+            setTransStatus(msg, true);
+            return;
+          }
+          setTransStatus('Transaksi berhasil disimpan.', false);
+          refreshSummaryCards();
+          loadBendaharaTableData();
+          setTimeout(function(){
+            toggleTransModal(false);
+          }, 450);
+        }).withFailureHandler(function(err){
+          setTransLoading(false);
+          setTransStatus('Terjadi error server: ' + (err && err.message ? err.message : err), true);
+        }).apiBendaharaAddTransaksi(payload);
+      });
+    }
+
+    function renderProjectOptions(projects, preferred) {
+      var sel = document.getElementById('projectSelect');
+      if (!sel) return;
+
+      var list = Array.isArray(projects) ? projects : [];
+      sel.innerHTML = '';
+
+      if (!list.length) {
+        var empty = document.createElement('option');
+        empty.value = '';
+        empty.textContent = 'Belum ada project';
+        sel.appendChild(empty);
+        APP2_SELECTED_PROJECT = '';
+        return;
+      }
+
+      list.forEach(function(name){
+        var opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        sel.appendChild(opt);
+      });
+
+      if (preferred && list.indexOf(preferred) >= 0) {
+        sel.value = preferred;
+      } else if (APP2_SELECTED_PROJECT && list.indexOf(APP2_SELECTED_PROJECT) >= 0) {
+        sel.value = APP2_SELECTED_PROJECT;
+      } else {
+        sel.value = list[0];
+      }
+
+      APP2_SELECTED_PROJECT = sel.value || '';
+      updateProjectCardTitle();
+      refreshSummaryCards();
+      loadBendaharaTableData();
+    }
+
+    function updateProjectCardTitle(){
+      var el = document.getElementById('cardProjectName');
+      if (!el) return;
+      el.textContent = APP2_SELECTED_PROJECT ? '(' + APP2_SELECTED_PROJECT + ')' : '(Project Aktif)';
+    }
+
+    function loadProjects(preferred) {
+      var sel = document.getElementById('projectSelect');
+      if (sel) {
+        sel.innerHTML = '<option value="">Memuat project...</option>';
+      }
+
+      if (!(typeof google !== 'undefined' && google.script && google.script.run)) {
+        if (sel) sel.innerHTML = '<option value="">Project hanya aktif di Web App</option>';
+        return;
+      }
+
+      google.script.run.withSuccessHandler(function(res){
+        if (!res || !res.ok) {
+          if (sel) sel.innerHTML = '<option value="">Gagal memuat project</option>';
+          return;
+        }
+        renderProjectOptions(res.projects || [], preferred);
+      }).withFailureHandler(function(){
+        if (sel) sel.innerHTML = '<option value="">Gagal memuat project</option>';
+      }).apiBendaharaListMyProjects();
+    }
+
+    function onProjectChange(){
+      var sel = document.getElementById('projectSelect');
+      APP2_SELECTED_PROJECT = sel ? String(sel.value || '') : '';
+      updateProjectCardTitle();
+      refreshSummaryCards();
+      loadBendaharaTableData();
+      console.log('[App2] Project aktif:', APP2_SELECTED_PROJECT || '(kosong)');
+    }
+
+    function saveProject(){
+      const input = document.getElementById('projectNameInput');
+      const projectName = (input && input.value ? input.value : '').trim();
+      if (!projectName) {
+        setProjectStatus('Nama project wajib diisi.', true);
+        return;
+      }
+
+      if (!(typeof google !== 'undefined' && google.script && google.script.run)) {
+        setProjectStatus('google.script.run tidak tersedia.', true);
+        return;
+      }
+
+      setProjectLoading(true);
+      setProjectStatus('Menyimpan project...', false);
+
+      google.script.run.withSuccessHandler(function(res){
+        setProjectLoading(false);
+        if (!res || !res.ok) {
+          setProjectStatus((res && res.message) || 'Gagal menyimpan project.', true);
+          return;
+        }
+
+        setProjectStatus(res.duplicated ? 'Project sudah ada.' : 'Project berhasil disimpan.', false);
+        if (input && !res.duplicated) input.value = '';
+        loadProjects(res.projectName || projectName);
+      }).withFailureHandler(function(err){
+        setProjectLoading(false);
+        setProjectStatus('Terjadi error server: ' + (err && err.message ? err.message : err), true);
+      }).apiBendaharaAddProject({ projectName: projectName });
+    }
+
     document.addEventListener('keydown', function(e){
-      if(e.key === 'Escape') toggleMenu(false);
+      if (e.key === 'Enter') {
+        const modal = document.getElementById('addProjectModal');
+        const active = document.activeElement;
+        const open = modal && modal.style.display !== 'none';
+        if (open && active && active.id === 'projectNameInput') saveProject();
+      }
+    });
+
+    document.addEventListener('keydown', function(e){
+      if(e.key === 'Escape') {
+        toggleMenu(false);
+        toggleAddProjectModal(false);
+        toggleTransModal(false);
+        toggleApp2ExportModal(false);
+      }
     });
     window.addEventListener('DOMContentLoaded', function() {
       loadMyTheme();
       loadHeader();
       startClock();
+      loadProjects();
+      loadMetodeOptions();
+      updateProjectCardTitle();
+      refreshSummaryCards();
+      loadBendaharaTableData();
+
+      var tableDateStartFilter = document.getElementById('app2TableDateStartFilter');
+      var tableDateEndFilter = document.getElementById('app2TableDateEndFilter');
+      var tableTypeFilter = document.getElementById('app2TableTypeFilter');
+      if (tableDateStartFilter) tableDateStartFilter.addEventListener('change', filterApp2Table);
+      if (tableDateEndFilter) tableDateEndFilter.addEventListener('change', filterApp2Table);
+      if (tableTypeFilter) tableTypeFilter.addEventListener('change', filterApp2Table);
+
+      var fileInput = document.getElementById('transStruck');
+      if (fileInput) {
+        fileInput.addEventListener('change', function(){
+          var info = document.getElementById('transStruckInfo');
+          var count = fileInput.files ? fileInput.files.length : 0;
+          if (!info) return;
+          if (count === 0) {
+            info.textContent = 'Belum ada file dipilih (bisa lebih dari 1).';
+          } else if (count === 1) {
+            info.textContent = 'File: ' + fileInput.files[0].name;
+          } else {
+            info.textContent = count + ' file dipilih (akan digabung jadi 1 file saat upload).';
+          }
+        });
+      }
+
+      var metodeSel = document.getElementById('transMetode');
+      if (metodeSel && metodeSel.dataset.saldoBound !== '1') {
+        metodeSel.addEventListener('change', refreshTransMetodeSaldoInfo);
+        metodeSel.dataset.saldoBound = '1';
+      }
     });
     </script>
   </body>

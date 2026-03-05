@@ -12,8 +12,22 @@
  */
 
 // Session expiry configuration
-const SESSION_SHORT_HOURS = 2;  // Tanpa remember me: 2 jam
-const SESSION_LONG_DAYS = 7;     // Dengan remember me: 7 hari
+const AUTH_CONFIG = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.AUTH) || {};
+const ID_GENERATOR_CONFIG = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.ID_GENERATOR) || {};
+
+const SESSION_SHORT_HOURS = Number(AUTH_CONFIG.SESSION_SHORT_HOURS || 2);  // Tanpa remember me: 2 jam
+const SESSION_LONG_DAYS = Number(AUTH_CONFIG.SESSION_LONG_DAYS || 7);       // Dengan remember me: 7 hari
+const SESSION_CACHE_MAX_SECONDS = Number(AUTH_CONFIG.SESSION_CACHE_MAX_SECONDS || 21600);
+const AUTH_OTP_TTL_SECONDS = Number(AUTH_CONFIG.OTP_TTL_SECONDS || (10 * 60));
+const AUTH_OTP_DIGITS = Number(AUTH_CONFIG.OTP_DIGITS || 6);
+const AUTH_OTP_ALLOWED_PURPOSES = Array.isArray(AUTH_CONFIG.OTP_ALLOWED_PURPOSES)
+  ? AUTH_CONFIG.OTP_ALLOWED_PURPOSES.map(p => String(p || '').trim().toLowerCase()).filter(Boolean)
+  : ['signup', 'reset'];
+const AUTH_PASSWORD_MIN_LENGTH = Number(AUTH_CONFIG.PASSWORD_MIN_LENGTH || 4);
+const AUTH_PROFILE_PHOTO_ALLOWED_MIME_TYPES = Array.isArray(AUTH_CONFIG.PROFILE_PHOTO_ALLOWED_MIME_TYPES)
+  ? AUTH_CONFIG.PROFILE_PHOTO_ALLOWED_MIME_TYPES
+  : ['image/png', 'image/jpeg', 'image/webp'];
+const AUTH_PROFILE_PHOTO_MAX_BYTES = Number(AUTH_CONFIG.PROFILE_PHOTO_MAX_BYTES || (1.5 * 1024 * 1024));
 
 function generateSessionToken_() {
   // Generate random session token (32 chars)
@@ -161,7 +175,7 @@ function apiLogin(username, password, rememberMe) {
     scriptProps.setProperty(getSessionKey_('data'), sessionData);
   } else {
     // No remember me: Save to Cache only (max 6 hours)
-    cache.put(getSessionKey_('data'), sessionData, Math.min(expirySeconds, 21600));
+    cache.put(getSessionKey_('data'), sessionData, Math.min(expirySeconds, SESSION_CACHE_MAX_SECONDS));
   }
 
   ensureUserTxSheet(username);
@@ -179,11 +193,15 @@ function apiLogin(username, password, rememberMe) {
 /**********************
  * OTP
  **********************/
-const AUTH_OTP_TTL_SECONDS = 10 * 60;
 
 function normalizeEmail_(email) { return String(email || '').trim().toLowerCase(); }
 function normalizePurpose_(purpose) { return String(purpose || '').trim().toLowerCase(); }
-function generateOtp_() { return String(Math.floor(100000 + Math.random() * 900000)); }
+function generateOtp_() {
+  const digits = Math.max(4, Math.floor(AUTH_OTP_DIGITS));
+  const min = Math.pow(10, digits - 1);
+  const max = Math.pow(10, digits) - 1;
+  return String(Math.floor(min + Math.random() * (max - min + 1)));
+}
 
 function otpCacheKey_(purpose, email) {
   return `otp:${normalizePurpose_(purpose)}:${normalizeEmail_(email)}`;
@@ -215,7 +233,7 @@ function apiSendOtp(purpose, email) {
   purpose = normalizePurpose_(purpose);
   email = normalizeEmail_(email);
 
-  if (!['signup', 'reset'].includes(purpose)) return { ok: false, message: 'Purpose tidak valid.' };
+  if (!AUTH_OTP_ALLOWED_PURPOSES.includes(purpose)) return { ok: false, message: 'Purpose tidak valid.' };
   if (!isValidEmail_(email)) return { ok: false, message: 'Email tidak valid.' };
 
   const existing = findUserRowByEmail_(email);
@@ -274,7 +292,7 @@ function apiAvatarPresetList() {
 /**********************
  * Upload Foto -> Drive Folder tertentu
  **********************/
-const AUTH_PROFILE_PHOTO_FOLDER_ID = '1z9FqYharqvWu6j5tzZmoDWKHHd018GG6';
+const AUTH_PROFILE_PHOTO_FOLDER_ID = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.STORAGE && APP_CONFIG.STORAGE.PROFILE_PHOTO_FOLDER_ID) || '';
 
 function apiUploadProfilePhoto(payload) {
   try {
@@ -283,17 +301,24 @@ function apiUploadProfilePhoto(payload) {
     const base64 = String(payload?.base64 || '');
     if (!base64) return { ok: false, message: 'File foto kosong.' };
 
-    const allowed = ['image/png', 'image/jpeg', 'image/webp'];
-    const finalMime = allowed.includes(mimeType) ? mimeType : 'image/png';
+    const finalMime = AUTH_PROFILE_PHOTO_ALLOWED_MIME_TYPES.includes(mimeType) ? mimeType : 'image/png';
 
     const ext =
       finalMime === 'image/jpeg' ? 'jpg' :
       finalMime === 'image/webp' ? 'webp' : 'png';
 
-    const safeName = filenameIn || (`profile_${newId_('P')}.${ext}`);
+    const prefixProfilePhoto = String(ID_GENERATOR_CONFIG.PREFIX_PROFILE_PHOTO || 'P');
+    const safeName = filenameIn || (`profile_${newId_(prefixProfilePhoto)}.${ext}`);
 
     const bytes = Utilities.base64Decode(base64);
+    if (bytes.length > AUTH_PROFILE_PHOTO_MAX_BYTES) {
+      return { ok: false, message: 'Ukuran foto terlalu besar.' };
+    }
     const blob = Utilities.newBlob(bytes, finalMime, safeName);
+
+    if (!AUTH_PROFILE_PHOTO_FOLDER_ID) {
+      return { ok: false, message: 'Konfigurasi PROFILE_PHOTO_FOLDER_ID belum diisi di Konfigurasi.gs.' };
+    }
 
     const folder = DriveApp.getFolderById(AUTH_PROFILE_PHOTO_FOLDER_ID);
     const file = folder.createFile(blob);
@@ -301,7 +326,8 @@ function apiUploadProfilePhoto(payload) {
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
     const fileId = file.getId();
-    const urlDirect = `https://drive.google.com/uc?export=view&id=${fileId}`;
+    const directViewTemplate = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.URL && APP_CONFIG.URL.DRIVE_DIRECT_VIEW_URL_TEMPLATE) || 'https://drive.google.com/uc?export=view&id={id}';
+    const urlDirect = directViewTemplate.replace('{id}', fileId);
 
     return { ok: true, fileId, url: urlDirect };
   } catch (err) {
@@ -324,7 +350,9 @@ function apiSignup(payload) {
   if (!username) return { ok: false, message: 'Username wajib diisi.' };
   if (!nama) return { ok: false, message: 'Nama wajib diisi.' };
   if (!isValidEmail_(email)) return { ok: false, message: 'Email tidak valid.' };
-  if (password.length < 4) return { ok: false, message: 'Password minimal 4 karakter.' };
+  if (password.length < AUTH_PASSWORD_MIN_LENGTH) {
+    return { ok: false, message: `Password minimal ${AUTH_PASSWORD_MIN_LENGTH} karakter.` };
+  }
 
   const otpRes = verifyOtp_('signup', email, otp);
   if (!otpRes.ok) return otpRes;
@@ -349,6 +377,18 @@ function apiSignup(payload) {
   sh.appendRow(row);
   ensureUserTxSheet(username);
 
+  try {
+    ensureBendaharaUserFolderByUsername_(username);
+  } catch (err) {
+    Logger.log('[apiSignup] Gagal auto-create folder bendahara untuk user baru: ' + err);
+  }
+
+  try {
+    ensureBendaharaTx4SheetByUsername_(username);
+  } catch (err) {
+    Logger.log('[apiSignup] Gagal auto-create sheet TX4 bendahara untuk user baru: ' + err);
+  }
+
   return { ok: true, message: 'Akun berhasil dibuat. Silakan login.' };
 }
 
@@ -358,7 +398,9 @@ function apiResetPassword(payload) {
   const newPassword = String(payload?.newPassword || '');
 
   if (!isValidEmail_(email)) return { ok: false, message: 'Email tidak valid.' };
-  if (newPassword.length < 4) return { ok: false, message: 'Password baru minimal 4 karakter.' };
+  if (newPassword.length < AUTH_PASSWORD_MIN_LENGTH) {
+    return { ok: false, message: `Password baru minimal ${AUTH_PASSWORD_MIN_LENGTH} karakter.` };
+  }
 
   const otpRes = verifyOtp_('reset', email, otp);
   if (!otpRes.ok) return otpRes;
@@ -456,7 +498,9 @@ function apiProfileChangePassword(payload) {
   const newPassword2 = String(payload?.newPassword2 || '');
 
   if (!oldPassword) return { ok: false, message: 'Password lama wajib diisi.' };
-  if (newPassword.length < 4) return { ok: false, message: 'Password baru minimal 4 karakter.' };
+  if (newPassword.length < AUTH_PASSWORD_MIN_LENGTH) {
+    return { ok: false, message: `Password baru minimal ${AUTH_PASSWORD_MIN_LENGTH} karakter.` };
+  }
   if (newPassword !== newPassword2) return { ok: false, message: 'Confirm password tidak sama.' };
 
   const storedHash = String(found.row[CONFIG.USERS_COL.password_hash - 1] || '');

@@ -367,6 +367,8 @@ function themeGetUserThemeKey_(username) {
 function apiThemeGetMyTheme() {
   const username = getSessionUser_();
   Logger.log('[apiThemeGetMyTheme] username: ' + username);
+  // Tambahan log: cek isi THEME_REGISTRY
+  Logger.log('[apiThemeGetMyTheme] THEME_REGISTRY: ' + JSON.stringify(THEME_REGISTRY));
   if (!username) return { ok: false, message: 'Belum login atau session expired.' };
 
   const key = themeGetUserThemeKey_(username);

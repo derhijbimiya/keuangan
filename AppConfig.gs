@@ -11,12 +11,39 @@ function getTentangPageHtml() {
  */
 
 const CONFIG = {
-  USERS_SHEET_NAME: 'Users',
-  DATA_SHEET_NAME: 'Data',
-  TX_SHEET_PREFIX: 'TX_',
-  TX1_SHEET_PREFIX: 'TX1_',
-  TX2_SHEET_PREFIX: 'TX2_',
-  TOT_SHEET_PREFIX: 'TOT_',
+  get USERS_SHEET_NAME() {
+    return (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.SHEET && APP_CONFIG.SHEET.USERS_SHEET_NAME) || 'Users';
+  },
+  get DATA_SHEET_NAME() {
+    return (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.SHEET && APP_CONFIG.SHEET.DATA_SHEET_NAME) || 'Data';
+  },
+  get DATA2_SHEET_NAME() {
+    return (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.SHEET && APP_CONFIG.SHEET.DATA2_SHEET_NAME) || 'Data2';
+  },
+  get TX_SHEET_PREFIX() {
+    return (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.SHEET && APP_CONFIG.SHEET.TX_SHEET_PREFIX) || 'TX_';
+  },
+  get TX1_SHEET_PREFIX() {
+    return (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.SHEET && APP_CONFIG.SHEET.TX1_SHEET_PREFIX) || 'TX1_';
+  },
+  get TX2_SHEET_PREFIX() {
+    return (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.SHEET && APP_CONFIG.SHEET.TX2_SHEET_PREFIX) || 'TX2_';
+  },
+  get TOT_SHEET_PREFIX() {
+    return (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.SHEET && APP_CONFIG.SHEET.TOT_SHEET_PREFIX) || 'TOT_';
+  },
+  get TX4_SHEET_PREFIX() {
+    return (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.SHEET && APP_CONFIG.SHEET.TX4_SHEET_PREFIX) || 'TX4_';
+  },
+  get BENDAHARA_DRIVE_ROOT_FOLDER_ID() {
+    return (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.STORAGE && APP_CONFIG.STORAGE.BENDAHARA_DRIVE_ROOT_FOLDER_ID) || '';
+  },
+  get BENDAHARA_SPREADSHEET_ID() {
+    return (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.STORAGE && APP_CONFIG.STORAGE.BENDAHARA_SPREADSHEET_ID) || '';
+  },
+  get BENDAHARA_DATA_SHEET_NAME() {
+    return (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.SHEET && APP_CONFIG.SHEET.BENDAHARA_DATA_SHEET_NAME) || 'Data';
+  },
 
   USERS_COL: {
     id: 1,
@@ -33,6 +60,11 @@ const CONFIG = {
   USERS_AVATAR_PRESET_COL: {
     nama_profil: 11, // K
     link_profil: 12  // L
+  },
+
+  BENDAHARA_DATA_COL: {
+    id_user: 1,
+    project: 2
   },
 
   TX_COL: {
@@ -70,9 +102,16 @@ const CONFIG = {
  * Ubah file ID di sini untuk mengganti logo tema
  */
 const THEME_LOGOS = {
-  'dark-blue-modern': '1Y81PgW88j34xDnqMJiZ9F5VKCs9_3DzD',
-  'dark-red-japan': '1KKyK5H-J2YXAnPRPaQzjAQ0uyUTFf5fL',
-  'cyber-pink': '1HNJVUBQDTyMZxXQPqNqxuNZU4XiNVTKj'
+  'dark-blue-modern': (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.THEME_LOGOS && APP_CONFIG.THEME_LOGOS['dark-blue-modern']) || '',
+  'dark-red-japan': (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.THEME_LOGOS && APP_CONFIG.THEME_LOGOS['dark-red-japan']) || '',
+  'cyber-pink': (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.THEME_LOGOS && APP_CONFIG.THEME_LOGOS['cyber-pink']) || '',
+  'galaxy-nebula': (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.THEME_LOGOS && APP_CONFIG.THEME_LOGOS['galaxy-nebula']) || '',
+  'neon-pink': (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.THEME_LOGOS && APP_CONFIG.THEME_LOGOS['neon-pink']) || '',
+  'rose-neon-dream': (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.THEME_LOGOS && APP_CONFIG.THEME_LOGOS['rose-neon-dream']) || '',
+  'sakura-moonlight': (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.THEME_LOGOS && APP_CONFIG.THEME_LOGOS['sakura-moonlight']) || '',
+  'inferno-gold': (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.THEME_LOGOS && APP_CONFIG.THEME_LOGOS['inferno-gold']) || '',
+  'neon-tokyo-night': (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.THEME_LOGOS && APP_CONFIG.THEME_LOGOS['neon-tokyo-night']) || '',
+  'emerald-forest': (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.THEME_LOGOS && APP_CONFIG.THEME_LOGOS['emerald-forest']) || ''
 };
 
 function getActiveSpreadsheet_() {
@@ -113,11 +152,12 @@ function nowIso_() {
 }
 
 function newId_(prefix) {
+  const idCfg = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.ID_GENERATOR) || {};
   prefix = String(prefix || '').trim().toUpperCase();
-  if (!prefix) prefix = 'A';
+  if (!prefix) prefix = String(idCfg.DEFAULT_PREFIX || 'A').trim().toUpperCase() || 'A';
 
   const lock = LockService.getScriptLock();
-  lock.waitLock(10000);
+  lock.waitLock(Number(idCfg.COUNTER_LOCK_TIMEOUT_MS || 10000));
 
   try {
     const props = PropertiesService.getScriptProperties();
@@ -126,8 +166,10 @@ function newId_(prefix) {
     const next = curr + 1;
     props.setProperty(key, String(next));
 
-    const shortNum = next % 1000;
-    const numStr = String(shortNum).padStart(3, '0');
+    const modulo = Number(idCfg.SHORT_NUMBER_MODULO || 1000);
+    const padLen = Number(idCfg.SHORT_NUMBER_PAD_LENGTH || 3);
+    const shortNum = next % modulo;
+    const numStr = String(shortNum).padStart(padLen, '0');
     return `${prefix}${numStr}`;
   } finally {
     lock.releaseLock();
@@ -175,9 +217,12 @@ function driveFileIdFromUrl_(url) {
   url = String(url || '').trim();
   if (!url) return '';
 
+  const minLen = Number((typeof APP_CONFIG !== 'undefined' && APP_CONFIG.URL && APP_CONFIG.URL.DRIVE_FILE_ID_MIN_LENGTH) || 20);
+  const maxLen = Number((typeof APP_CONFIG !== 'undefined' && APP_CONFIG.URL && APP_CONFIG.URL.DRIVE_FILE_ID_MAX_LENGTH) || 50);
+
   // Cek apakah input sudah berupa file ID saja (tanpa URL)
   // File ID Google Drive biasanya 28-33 karakter alphanumeric + dash/underscore
-  if (url.length >= 20 && url.length <= 50 && /^[a-zA-Z0-9_-]+$/.test(url)) {
+  if (url.length >= minLen && url.length <= maxLen && /^[a-zA-Z0-9_-]+$/.test(url)) {
     return url;
   }
 
@@ -208,7 +253,8 @@ function driveToDirectViewUrl_(url) {
   }
   
   // Gunakan thumbnail API untuk embedding yang lebih reliable
-  const result = `https://drive.google.com/thumbnail?id=${id}&sz=w400`;
+  const template = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.URL && APP_CONFIG.URL.DRIVE_THUMBNAIL_URL_TEMPLATE) || 'https://drive.google.com/thumbnail?id={id}&sz=w400';
+  const result = template.replace('{id}', id);
   Logger.log('driveToDirectViewUrl_: ' + url + ' => ' + result);
   return result;
 }
@@ -242,7 +288,10 @@ function listAvatarPresets_() {
  * @return {string} Logo URL or empty string if not found
  */
 function getThemeLogoUrl_(themeKey) {
-  const fileId = THEME_LOGOS[themeKey];
+  const logos = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.THEME_LOGOS)
+    ? APP_CONFIG.THEME_LOGOS
+    : THEME_LOGOS;
+  const fileId = logos[themeKey];
   if (!fileId) return '';
   return driveToDirectViewUrl_(fileId);
 }

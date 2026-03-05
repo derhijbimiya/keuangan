@@ -1,4 +1,79 @@
 /**
+ * Tambah data rekening/ewallet ke sheet Data2
+ * @param {Object} data - Data yang dikirim dari frontend
+ *   { jenis, no_rek, id_user, nama_unik, uang, nama }
+ * @return {Object} hasil { ok: true/false, message: string }
+ */
+function legacyMain_addWalletRekening(data) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Data2');
+    if (!sheet) return { ok: false, message: 'Sheet Data2 tidak ditemukan.' };
+    // Validasi: Jenis wajib, id_user otomatis, Nama Unik boleh kosong jika No.Rek diisi
+    var jenis = data.jenis ? data.jenis.trim() : '';
+    var no_rek = data.no_rek ? data.no_rek.trim() : '';
+    var nama_unik = data.nama_unik ? data.nama_unik.trim() : '';
+    var uang = data.uang || 0;
+    // id_user dari sheet Users berdasarkan username session
+    var username = getSessionUser_ && getSessionUser_();
+    var id_user = '';
+    if (username) {
+      var usersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
+      if (usersSheet) {
+        var usersData = usersSheet.getDataRange().getValues();
+        for (var i = 1; i < usersData.length; i++) { // Mulai dari baris ke-2 (header)
+          if (usersData[i][1] && usersData[i][1].toString().toLowerCase() === username.toLowerCase()) { // Kolom ke-2 = username
+            id_user = usersData[i][0]; // Kolom ke-1 = id_user
+            break;
+          }
+        }
+      }
+    }
+    // Lookup kode bank/ewallet
+    var kode = lookupKodeBankEwallet_(jenis);
+    // Nama: Kode(No.Rek/NamaUnik)
+    var nama = '';
+    if (no_rek) nama = kode + '(' + no_rek + ')';
+    else if (nama_unik) nama = kode + '(' + nama_unik + ')';
+    // Validasi utama
+    if (!jenis) return { ok: false, message: 'Jenis wajib diisi.' };
+    if (!id_user) return { ok: false, message: 'Akun Anda belum terdaftar di Users. Silakan hubungi admin untuk pendaftaran akses.' };
+    if (!(no_rek || nama_unik)) return { ok: false, message: 'Isi salah satu: No.Rek/No.HP atau Nama Unik.' };
+    if (no_rek && nama_unik) return { ok: false, message: 'Hanya boleh isi salah satu: No.Rek/No.HP atau Nama Unik.' };
+    // Simpan ke sheet
+    sheet.appendRow([
+      jenis,      // Nama lengkap bank/ewallet
+      no_rek,     // No.hp/No.Rek
+      id_user,    // id unik user
+      nama_unik,  // Nama unik
+      uang,       // Saldo
+      nama,       // Nama = Kode(No.Rek/NamaUnik)
+      kode        // Kode bank/ewallet
+    ]);
+    return { ok: true };
+  /**
+   * Lookup kode bank/ewallet dari nama lengkap Jenis
+   * @param {string} jenis
+   * @return {string} kode
+   */
+  function lookupKodeBankEwallet_(jenis) {
+    if (!jenis) return '';
+    var ref = [
+      // Bank
+      ['Bank Mandiri (BMRI)','BMRI'],['Bank Rakyat Indonesia (BRI)','BRI'],['Bank Negara Indonesia (BNI)','BNI'],['Bank Tabungan Negara (BTN)','BTN'],['Bank Central Asia (BCA)','BCA'],['Bank CIMB Niaga (CIMB Niaga)','CIMB Niaga'],['Bank Danamon (BDMN)','BDMN'],['Bank Permata (BNLI)','BNLI'],['Bank Panin (PNBN)','PNBN'],['Bank OCBC NISP (NISP)','NISP'],['Bank Mega (MEGA)','MEGA'],['Bank Sinarmas (BSIM)','BSIM'],['Bank Mayapada (MAYA)','MAYA'],['Bank Capital Indonesia (BACA)','BACA'],['Bank Bukopin (BBKP)','BBKP'],['Bank Victoria (BVIC)','BVIC'],['Bank Artha Graha Internasional (INPC)','INPC'],['Bank Maspion Indonesia (BMAS)','BMAS'],['Bank Jago (ARTO)','ARTO'],['Bank Neo Commerce (BBYB)','BBYB'],['Allo Bank (BBHI)','BBHI'],['Bank Raya Indonesia (AGRO)','AGRO'],['Bank Amar Indonesia (AMAR)','AMAR'],['SeaBank Indonesia (BSEA)','BSEA'],['Bank BTPN (BTPN)','BTPN'],['Bank Syariah Indonesia (BSI)','BSI'],['Bank Muamalat Indonesia (BMI)','BMI'],['BCA Syariah (BCAS)','BCAS'],['Bank Mega Syariah (BMS)','BMS'],['Bank Panin Dubai Syariah (PNBS)','PNBS'],['Bank Aladin Syariah (BANK)','BANK'],['Bank Tabungan Negara Syariah (BTN Syariah)','BTN Syariah'],['Citibank Indonesia (CITI)','CITI'],['HSBC Indonesia (HSBC)','HSBC'],['Standard Chartered Bank Indonesia (SCB)','SCB'],['Bank of China Indonesia (BOC)','BOC'],['JP Morgan Chase Bank Indonesia (JPM)','JPM'],['Bank Commonwealth Indonesia (BCI)','BCI'],['Bank UOB Indonesia (UOB)','UOB'],['Bank DBS Indonesia (DBS)','DBS'],['Bank ANZ Indonesia (ANZ)','ANZ'],['Bank of India Indonesia (BOI)','BOI'],['Bangkok Bank Indonesia (BBL)','BBL'],['Mizuho Bank Indonesia (MHBK)','MHBK'],
+      // E-Wallet
+      ['GoPay','GoPay'],['OVO','OVO'],['DANA','DANA'],['ShopeePay','ShopeePay'],['LinkAja','LinkAja'],['Jenius','Jenius'],['i.saku','i.saku'],['Sakuku','Sakuku'],['DOKU','DOKU'],['AstraPay','AstraPay'],['MotionPay','MotionPay'],['KasPro','KasPro'],['Paytren','Paytren']
+    ];
+    var jenisLower = jenis.toLowerCase();
+    for (var i=0; i<ref.length; i++) {
+      if (ref[i][0].toLowerCase() === jenisLower) return ref[i][1];
+    }
+    return '';
+  }
+  } catch(e) {
+    return { ok: false, message: e.message };
+  }
+}
+/**
  * API: Upload struck file to Google Drive (per user folder)
  * payload: { filename, mimeType, base64 }
  * returns: { ok, url, message }
@@ -9,19 +84,31 @@ function apiUploadStruck(payload) {
       Logger.log('[apiUploadStruck] Payload tidak valid: ' + JSON.stringify(payload));
       return { ok: false, message: 'File tidak valid.' };
     }
-    const MASTER_FOLDER_ID = '1QpD1L_igJOdLwfGSbQ58Zm8AhSMk7zfB';
     const username = getSessionUser_ && getSessionUser_();
     if (!username) {
       Logger.log('[apiUploadStruck] User tidak ditemukan!');
       return { ok: false, message: 'User tidak ditemukan.' };
     }
     Logger.log('[apiUploadStruck] Username: ' + username);
-    let userFolder;
+
+    const projectName = String(payload.projectName || '').trim();
+    let targetFolder;
     try {
-      userFolder = getOrCreateUserDriveFolder_(MASTER_FOLDER_ID, username);
-      Logger.log('[apiUploadStruck] User folder ready: ' + userFolder.getName());
+      const userFolderRes = ensureBendaharaUserFolderByUsername_(username);
+      if (!userFolderRes || !userFolderRes.ok) {
+        return { ok: false, message: (userFolderRes && userFolderRes.message) || 'Gagal menyiapkan folder user.' };
+      }
+
+      const userFolder = DriveApp.getFolderById(userFolderRes.folderId);
+      if (projectName) {
+        targetFolder = getOrCreateChildFolder_(userFolder, projectName);
+      } else {
+        targetFolder = userFolder;
+      }
+
+      Logger.log('[apiUploadStruck] Target folder ready: ' + targetFolder.getName());
     } catch (e) {
-      Logger.log('[apiUploadStruck] ERROR getOrCreateUserDriveFolder_: ' + e.toString());
+      Logger.log('[apiUploadStruck] ERROR resolve target folder: ' + e.toString());
       return { ok: false, message: 'Gagal akses folder Drive: ' + e.message };
     }
     const ext = payload.filename.includes('.') ? payload.filename.substring(payload.filename.lastIndexOf('.')) : '';
@@ -30,7 +117,7 @@ function apiUploadStruck(payload) {
     let file;
     try {
       const blob = Utilities.newBlob(Utilities.base64Decode(payload.base64), payload.mimeType, payload.filename);
-      file = userFolder.createFile(blob).setName(finalName);
+      file = targetFolder.createFile(blob).setName(finalName);
       Logger.log('[apiUploadStruck] File created: ' + file.getName() + ' | ' + file.getUrl());
     } catch (e) {
       Logger.log('[apiUploadStruck] ERROR createFile: ' + e.toString());
@@ -77,7 +164,7 @@ function getOrCreateUserDriveFolder_(parentFolderId, username) {
  * - TOT_<username> : khusus total/rekap (row 1 header, row 2 values)
  */
 
-function ensureUserTxSheet(username) {
+function legacyMain_ensureUserTxSheet(username) {
   // memastikan 3 sheet baru (TX1_, TX2_, TOT_)
   username = normalizeUsername_(username);
   if (!username) throw new Error('Username kosong.');
@@ -91,7 +178,7 @@ function ensureUserTxSheet(username) {
   return { ok: true, sheets: { tx1: sh1.getName(), tx2: sh2.getName(), tot: shT.getName() } };
 }
 
-function ensureUserTx1Sheet_(ss, username) {
+function legacyMain_ensureUserTx1Sheet_(ss, username) {
   const sheetName = `${CONFIG.TX1_SHEET_PREFIX}${username}`;
   let sh = ss.getSheetByName(sheetName);
   if (sh) return sh;
@@ -111,7 +198,7 @@ function ensureUserTx1Sheet_(ss, username) {
   return sh;
 }
 
-function ensureUserTx2Sheet_(ss, username) {
+function legacyMain_ensureUserTx2Sheet_(ss, username) {
   const sheetName = `${CONFIG.TX2_SHEET_PREFIX}${username}`;
   let sh = ss.getSheetByName(sheetName);
   if (sh) return sh;
@@ -131,7 +218,7 @@ function ensureUserTx2Sheet_(ss, username) {
   return sh;
 }
 
-function ensureUserTotSheet_(ss, username) {
+function legacyMain_ensureUserTotSheet_(ss, username) {
   const sheetName = `${CONFIG.TOT_SHEET_PREFIX}${username}`;
   let sh = ss.getSheetByName(sheetName);
   if (sh) return sh;
@@ -160,7 +247,7 @@ function ensureUserTotSheet_(ss, username) {
 /* ===========================
  * OLD API (kept) - still works, writes to TX1
  * =========================== */
-function apiAddTxMain(payload) {
+function legacyMain_apiAddTxMain(payload) {
   const jenisLegacy = (Number(payload && payload.pengeluaran || 0) > 0) ? 'pengeluaran'
     : (Number(payload && payload.pemasukan || 0) > 0) ? 'pemasukan'
       : (Number(payload && payload.tabungan || 0) > 0) ? 'tabungan'
@@ -180,7 +267,7 @@ function apiAddTxMain(payload) {
  * DASHBOARD NEW APIS
  * =========================== */
 
-function apiDashboardHeader() {
+function legacyMain_apiDashboardHeader() {
   const username = getSessionUser_();
   if (!username) return { ok: false, message: 'Belum login.' };
 
@@ -197,7 +284,7 @@ function apiDashboardHeader() {
   return { ok: true, username: username, nama: nama || username, fotoUrl: fotoUrl };
 }
 
-function _rangeFromKey_(rangeKey) {
+function legacyMain_rangeFromKey_(rangeKey) {
   // Handle custom range string format: "custom:YYYY-MM-DD:YYYY-MM-DD"
   if (typeof rangeKey === 'string' && rangeKey.startsWith('custom:')) {
     const parts = rangeKey.split(':');
@@ -264,7 +351,7 @@ function _rangeFromKey_(rangeKey) {
   return { key: 'all', start: null, end };
 }
 
-function _readTx1Rows_(username) {
+function legacyMain_readTx1Rows_(username) {
   const ss = getActiveSpreadsheet_();
   const sh = ensureUserTx1Sheet_(ss, normalizeUsername_(username));
   const lastRow = sh.getLastRow();
@@ -332,7 +419,7 @@ function apiDebugDates() {
   };
 }
 
-function _readTx2Rows_(username) {
+function legacyMain_readTx2Rows_(username) {
   const ss = getActiveSpreadsheet_();
   const sh = ensureUserTx2Sheet_(ss, normalizeUsername_(username));
   const lastRow = sh.getLastRow();
@@ -340,14 +427,14 @@ function _readTx2Rows_(username) {
   return sh.getRange(2, 1, lastRow - 1, 7).getValues(); // A..G (7 kolom)
 }
 
-function _toDate_(v) {
+function legacyMain_toDate_(v) {
   if (v instanceof Date && !isNaN(v.getTime())) return v;
   const d = new Date(String(v || '').trim());
   if (!isNaN(d.getTime())) return d;
   return null;
 }
 
-function _sumTx1InRange_(rows, start, end) {
+function legacyMain_sumTx1InRange_(rows, start, end) {
   let income = 0, expense = 0, savingIn = 0;
   let matchCount = 0;
   
@@ -373,7 +460,7 @@ function _sumTx1InRange_(rows, start, end) {
   return { income, expense, savingIn };
 }
 
-function _sumTx2InRange_(rows, start, end) {
+function legacyMain_sumTx2InRange_(rows, start, end) {
   let savingIn = 0;   // TX2 kolom D (tambah tabungan)
   let savingOut = 0;  // TX2 kolom E (pakai tabungan)
   let matchCount = 0;
@@ -399,7 +486,7 @@ function _sumTx2InRange_(rows, start, end) {
   return { savingIn, savingOut };
 }
 
-function _updateTotSheet_(username) {
+function legacyMain_updateTotSheet_(username) {
   username = normalizeUsername_(username);
   const ss = getActiveSpreadsheet_();
 
@@ -449,7 +536,7 @@ function _updateTotSheet_(username) {
   };
 }
 
-function apiDashboardSummary(rangeKey) {
+function legacyMain_apiDashboardSummary(rangeKey) {
   const username = getSessionUser_();
   if (!username) return { ok: false, message: 'Belum login.' };
 
@@ -517,7 +604,7 @@ function apiDashboardSummaryCustom(startDate, endDate) {
   };
 }
 
-function _groupDailyTx1_(rows, start, end, colIndex0Based) {
+function legacyMain_groupDailyTx1_(rows, start, end, colIndex0Based) {
   const m = {};
   for (const r of rows) {
     const dt = _toDate_(r[1]);
@@ -532,7 +619,7 @@ function _groupDailyTx1_(rows, start, end, colIndex0Based) {
   return m;
 }
 
-function _groupDailyTx2_(rows, start, end, colIndex0Based) {
+function legacyMain_groupDailyTx2_(rows, start, end, colIndex0Based) {
   const m = {};
   for (const r of rows) {
     const dt = _toDate_(r[1]);
@@ -547,7 +634,7 @@ function _groupDailyTx2_(rows, start, end, colIndex0Based) {
   return m;
 }
 
-function apiDashboardCharts(rangeKey) {
+function legacyMain_apiDashboardCharts(rangeKey) {
   const username = getSessionUser_();
   if (!username) return { ok: false, message: 'Belum login.' };
 
@@ -644,7 +731,7 @@ function apiDashboardChartsCustom(startDate, endDate) {
  * TRANSAKSI APIs (NEW STRUCTURE)
  * =========================== */
 
-function _lastNumberInSheetCol_(sh, colIndex1Based) {
+function legacyMain_lastNumberInSheetCol_(sh, colIndex1Based) {
   const lastRow = sh.getLastRow();
   if (lastRow < 2) return 0;
   const values = sh.getRange(2, colIndex1Based, lastRow - 1, 1).getValues();
@@ -655,7 +742,7 @@ function _lastNumberInSheetCol_(sh, colIndex1Based) {
   return 0;
 }
 
-function _lastSaldoFromTx1_(sh) {
+function legacyMain_lastSaldoFromTx1_(sh) {
   const lastRow = sh.getLastRow();
   if (lastRow < 2) return 0;
   const values = sh.getRange(2, 6, lastRow - 1, 1).getValues(); // F saldo_rekening
@@ -673,7 +760,7 @@ function _lastSaldoFromTx1_(sh) {
  * - nominal
  * - keterangan (optional)
  */
-function apiAddTxRekening(payload) {
+function legacyMain_apiAddTxRekening(payload) {
   const username = getSessionUser_();
   if (!username) return { ok: false, message: 'Belum login.' };
 
@@ -853,7 +940,7 @@ function fixMissingTx2Records() {
   return { ok: true, fixed: fixed };
 }
 
-function _lastSaldoTabunganFromTot_(shTot) {
+function legacyMain_lastSaldoTabunganFromTot_(shTot) {
   const v = shTot.getRange(2, 2).getValue(); // B total_tabungan
   const n = Number(v);
   return isFinite(n) ? n : 0;
@@ -865,7 +952,7 @@ function _lastSaldoTabunganFromTot_(shTot) {
  * - keperluan (wajib)
  * - jumlah_pakai_tabungan
  */
-function apiAddPakaiTabungan(payload) {
+function legacyMain_apiAddPakaiTabungan(payload) {
   const username = getSessionUser_();
   if (!username) return { ok: false, message: 'Belum login.' };
 
@@ -908,7 +995,7 @@ function apiAddPakaiTabungan(payload) {
  * - keperluan (wajib)
  * - jumlah_tambah_tabungan
  */
-function apiAddTabunganManual(payload) {
+function legacyMain_apiAddTabunganManual(payload) {
   const username = getSessionUser_();
   if (!username) return { ok: false, message: 'Belum login.' };
 
@@ -945,7 +1032,7 @@ function apiAddTabunganManual(payload) {
   return { ok: true, message: 'Tambah tabungan tersimpan.', id_pakai_tabungan: idPakai, row: nextRow, saldo_tabungan: nextSaldo };
 }
 
-function apiTxSummary() {
+function legacyMain_apiTxSummary() {
   const username = getSessionUser_();
   if (!username) return { ok: false, message: 'Belum login.' };
 
@@ -989,7 +1076,7 @@ function apiGetTableData() {
     Logger.log('TX1 Sheet: ' + sh1.getName() + ', LastRow: ' + lastRow);
     
     if (lastRow > 1) {
-      const data = sh1.getRange(2, 1, lastRow - 1, 8).getValues();
+      const data = sh1.getRange(2, 1, lastRow - 1, 10).getValues();
       Logger.log('TX1 Data rows: ' + data.length);
       
       for (let i = 0; i < data.length; i++) {
@@ -1000,6 +1087,7 @@ function apiGetTableData() {
         const pemasukan = Number(row[3] || 0);
         const tabungan = Number(row[4] || 0);
         const keterangan = String(row[7] || '');
+        const struck = String(row[8] || '');
         
         let keperluan = '';
         let nominal = 0;
@@ -1021,7 +1109,8 @@ function apiGetTableData() {
             tanggal: tanggal,
             keperluan: keperluan,
             nominal: nominal,
-            keterangan: keterangan
+            keterangan: keterangan,
+            struck: struck
           });
           Logger.log('TX1 Row ' + (i+2) + ': ' + idTransaksi + ' | ' + tanggal + ' | ' + keperluan + ' | ' + nominal);
         }
@@ -1040,7 +1129,8 @@ function apiGetTableData() {
     Logger.log('TX2 Sheet: ' + sh2.getName() + ', LastRow: ' + lastRow);
     
     if (lastRow > 1) {
-      const data = sh2.getRange(2, 1, lastRow - 1, 7).getValues(); // 7 kolom: A-G
+      const colsToRead = Math.max(9, sh2.getLastColumn());
+      const data = sh2.getRange(2, 1, lastRow - 1, colsToRead).getValues();
       Logger.log('TX2 Data rows: ' + data.length);
       
       for (let i = 0; i < data.length; i++) {
@@ -1050,6 +1140,7 @@ function apiGetTableData() {
         const keperluan = String(row[2] || '');   // Kolom C = keperluan
         const tabMasuk = Number(row[3] || 0);   // Kolom D = jumlah_tambah_tabungan
         const tabKeluar = Number(row[4] || 0);  // Kolom E = jumlah_pakai_tabungan
+        const struck = String(row[8] || '');    // Kolom I (opsional) = struck
         
         // Nominal positif untuk masuk, negatif untuk keluar
         const nominal = tabMasuk > 0 ? tabMasuk : (tabKeluar > 0 ? -tabKeluar : 0);
@@ -1059,7 +1150,8 @@ function apiGetTableData() {
             idTransaksi: idTransaksi,
             tanggal: tanggal,
             nominal: nominal,
-            keterangan: keperluan
+            keterangan: keperluan,
+            struck: struck
           });
           Logger.log('TX2 Row ' + (i+2) + ': ' + idTransaksi + ' | ' + tanggal + ' | ' + nominal + ' | ' + keperluan);
         }

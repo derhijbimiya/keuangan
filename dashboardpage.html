@@ -1,4 +1,684 @@
+              <script>
+              // === Metode Transaksi Dinamis ===
+              let USER_ID_ = '';
+              let CURRENT_USER_NAME_ = '';
+              let CURRENT_USERNAME_ = '';
+              let choicesJenis = null;
+              let TUJUAN_JENIS = 'bank';
+
+              function formatRupiahSimple_(v) {
+                return 'Rp ' + new Intl.NumberFormat('id-ID').format(Number(v || 0) || 0);
+              }
+
+              function setMetodeSaldoInfo_(elementId, message, isError) {
+                const el = document.getElementById(elementId);
+                if (!el) return;
+                el.textContent = message || 'Saldo metode: -';
+                el.style.color = isError ? '#ff5f7a' : 'var(--muted, rgba(255,255,255,.7))';
+              }
+
+              function refreshMetodeSaldoInfo_(selectId, infoId) {
+                const sel = document.getElementById(selectId);
+                if (!sel) return;
+
+                const metode = String(sel.value || '').trim();
+                if (!metode) {
+                  setMetodeSaldoInfo_(infoId, 'Saldo metode: pilih metode terlebih dulu.', false);
+                  return;
+                }
+
+                if (!(typeof google !== 'undefined' && google.script && google.script.run)) {
+                  setMetodeSaldoInfo_(infoId, 'Saldo metode: hanya tersedia di Web App.', true);
+                  return;
+                }
+
+                setMetodeSaldoInfo_(infoId, 'Saldo metode: memuat...', false);
+                google.script.run.withSuccessHandler(function(res){
+                  if (!res || !res.ok) {
+                    const msg = (res && res.message) ? String(res.message) : 'Tidak bisa memuat saldo.';
+                    setMetodeSaldoInfo_(infoId, 'Saldo metode: tidak bisa dilihat (' + msg + ')', true);
+                    return;
+                  }
+
+                  if (res.canView === false || res.isCash) {
+                    setMetodeSaldoInfo_(infoId, 'Saldo metode: tidak bisa dilihat untuk metode ini.', false);
+                    return;
+                  }
+
+                  setMetodeSaldoInfo_(infoId, 'Saldo metode sekarang: ' + formatRupiahSimple_(res.saldo || 0), false);
+                }).withFailureHandler(function(err){
+                  setMetodeSaldoInfo_(infoId, 'Saldo metode: gagal memuat (' + (err && err.message ? err.message : err) + ')', true);
+                }).apiGetSaldoMetodeAktif(metode);
+              }
+
+              function bindMetodeSaldoListeners_() {
+                const rekSel = document.getElementById('txrMetode');
+                if (rekSel && rekSel.dataset.saldoBound !== '1') {
+                  rekSel.addEventListener('change', function(){
+                    refreshMetodeSaldoInfo_('txrMetode', 'txrMetodeSaldoInfo');
+                  });
+                  rekSel.dataset.saldoBound = '1';
+                }
+
+                const tabSel = document.getElementById('txtMetode');
+                if (tabSel && tabSel.dataset.saldoBound !== '1') {
+                  tabSel.addEventListener('change', function(){
+                    refreshMetodeSaldoInfo_('txtMetode', 'txtMetodeSaldoInfo');
+                  });
+                  tabSel.dataset.saldoBound = '1';
+                }
+              }
+              // Ambil id_user dari backend saat halaman load
+              function loadUserId_() {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                  google.script.run.withSuccessHandler(function(headerRes){
+                    console.log('[loadUserId_] headerRes:', headerRes);
+                    if (headerRes && headerRes.ok && headerRes.id_user) {
+                      USER_ID_ = headerRes.id_user;
+                      console.log('[loadUserId_] USER_ID_ set:', USER_ID_);
+                      updateMetodeDropdownRekening_();
+                      updateMetodeDropdownTabungan_();
+                    } else if (headerRes && headerRes.ok && headerRes.username) {
+                      // Coba ambil id_user dari username
+                      const username = headerRes.username;
+                      console.warn('[loadUserId_] id_user tidak ada, ambil manual pakai username:', username);
+                      if (typeof google !== 'undefined' && google.script && google.script.run) {
+                        google.script.run.withSuccessHandler(function(idUserRes){
+                          USER_ID_ = idUserRes;
+                          console.log('[loadUserId_] USER_ID_ dari getIdUserByUsername:', USER_ID_);
+                          updateMetodeDropdownRekening_();
+                          updateMetodeDropdownTabungan_();
+                        }).getIdUserByUsername(username);
+                      }
+                    } else {
+                      console.warn('[loadUserId_] Tidak dapat id_user maupun username dari backend', headerRes);
+                    }
+                  }).apiDashboardHeader();
+                } else {
+                  console.warn('[loadUserId_] google.script.run tidak tersedia');
+                }
+              }
+              // Panggil saat halaman load
+              document.addEventListener('DOMContentLoaded', loadUserId_);
+
+              // Ambil dan isi dropdown metode rekening
+              function updateMetodeDropdownRekening_() {
+                const sel = document.getElementById('txrMetode');
+                if (!sel) { console.warn('[updateMetodeDropdownRekening_] #txrMetode tidak ditemukan'); return; }
+                sel.innerHTML = '<option value="cash">Cash</option>';
+                setMetodeSaldoInfo_('txrMetodeSaldoInfo', 'Saldo metode: memuat...', false);
+                if (!USER_ID_) { console.warn('[updateMetodeDropdownRekening_] USER_ID_ kosong'); return; }
+                console.log('[updateMetodeDropdownRekening_] USER_ID_:', USER_ID_);
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                  google.script.run.withSuccessHandler(function(metodeList){
+                    console.log('[updateMetodeDropdownRekening_] metodeList:', metodeList);
+                    if (Array.isArray(metodeList)) {
+                      metodeList.forEach(function(metode) {
+                        if (metode && metode.toLowerCase() !== 'cash') {
+                          const opt = document.createElement('option');
+                          opt.value = metode;
+                          opt.textContent = metode;
+                          sel.appendChild(opt);
+                        }
+                      });
+                    } else {
+                      console.warn('[updateMetodeDropdownRekening_] metodeList bukan array');
+                    }
+                    refreshMetodeSaldoInfo_('txrMetode', 'txrMetodeSaldoInfo');
+                  }).getMetodeByUser(USER_ID_);
+                } else {
+                  console.warn('[updateMetodeDropdownRekening_] google.script.run tidak tersedia');
+                }
+              }
+
+              // Ambil dan isi dropdown metode tabungan
+              function updateMetodeDropdownTabungan_() {
+                const sel = document.getElementById('txtMetode');
+                if (!sel) { console.warn('[updateMetodeDropdownTabungan_] #txtMetode tidak ditemukan'); return; }
+                sel.innerHTML = '<option value="cash">Cash</option>';
+                setMetodeSaldoInfo_('txtMetodeSaldoInfo', 'Saldo metode: memuat...', false);
+                if (!USER_ID_) { console.warn('[updateMetodeDropdownTabungan_] USER_ID_ kosong'); return; }
+                console.log('[updateMetodeDropdownTabungan_] USER_ID_:', USER_ID_);
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                  google.script.run.withSuccessHandler(function(metodeList){
+                    console.log('[updateMetodeDropdownTabungan_] metodeList:', metodeList);
+                    if (Array.isArray(metodeList)) {
+                      metodeList.forEach(function(metode) {
+                        if (metode && metode.toLowerCase() !== 'cash') {
+                          const opt = document.createElement('option');
+                          opt.value = metode;
+                          opt.textContent = metode;
+                          sel.appendChild(opt);
+                        }
+                      });
+                    } else {
+                      console.warn('[updateMetodeDropdownTabungan_] metodeList bukan array');
+                    }
+                    refreshMetodeSaldoInfo_('txtMetode', 'txtMetodeSaldoInfo');
+                  }).getMetodeByUser(USER_ID_);
+                } else {
+                  console.warn('[updateMetodeDropdownTabungan_] google.script.run tidak tersedia');
+                }
+              }
+
+              document.addEventListener('DOMContentLoaded', bindMetodeSaldoListeners_);
+
+              // Hook: update dropdown saat modal dibuka
+              const origToggleTxRekeningModal_ = window.toggleTxRekeningModal_;
+              window.toggleTxRekeningModal_ = function(force) {
+                if (typeof origToggleTxRekeningModal_ === 'function') {
+                  origToggleTxRekeningModal_.apply(this, arguments);
+                }
+                if (typeof force === 'undefined' || force) setTimeout(updateMetodeDropdownRekening_, 120);
+              };
+              const origToggleTabunganModal_ = window.toggleTabunganModal_;
+              window.toggleTabunganModal_ = function(force) {
+                if (typeof origToggleTabunganModal_ === 'function') {
+                  origToggleTabunganModal_.apply(this, arguments);
+                }
+                if (typeof force === 'undefined' || force) {
+                  setTimeout(updateMetodeDropdownTabungan_, 120);
+                }
+              };
+              </script>
+          <!-- Choices.js CSS -->
+          <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+            <!-- MODAL: TAMBAH REKENING/EWALLET -->
+            <div id="ewalletRekModal" class="profile-modal" aria-hidden="true" style="display:none;">
+              <div class="backdrop" onclick="toggleEwalletRekModal(false)"></div>
+              <div class="dialog" role="dialog" aria-modal="true" aria-label="Tambah Rekening/E-Wallet">
+                <div class="card">
+                  <div class="head">
+                    <div class="title">Tambah Rekening / E-Wallet</div>
+                    <button class="iconbtn small" onclick="toggleEwalletRekModal(false)" aria-label="Close">×</button>
+                  </div>
+                  <div id="ewalletRekModalContent">
+                    <div class="profile-grid">
+                      <div class="mini-label">PILIH TUJUAN</div>
+                      <div class="field tujuan-radio-group">
+                        <label class="radio-custom tujuan-radio" style="margin-right: 18px;">
+                          <input type="radio" name="tujuanType" value="bank" id="radioTujuanBank" checked onclick="setTipeBankEwallet('bank')">
+                          <span class="radio-indicator"></span>
+                          <span class="radio-label">🏦 Bank</span>
+                        </label>
+                        <label class="radio-custom tujuan-radio">
+                          <input type="radio" name="tujuanType" value="ewallet" id="radioTujuanEwallet" onclick="setTipeBankEwallet('ewallet')">
+                          <span class="radio-indicator"></span>
+                          <span class="radio-label">💳 E-Wallet</span>
+                        </label>
+                      </div>
+                      <div style="position:relative;max-width:340px;">
+                        <input id="bankSearchInput" class="text-lg" placeholder="Cari bank/ewallet..." autocomplete="off" oninput="filterBankDropdown()" onclick="showBankDropdown()" style="width:100%;">
+                        <div id="bankDropdown" class="dropdown-list"></div>
+                      </div>
+                      <div class="mini-label">PILIH INPUT</div>
+                      <div class="field input-radio-group">
+                        <label class="radio-custom">
+                          <input type="radio" name="inputTypeModal" value="norek" checked onclick="toggleInputModal()">
+                          <span class="radio-indicator"></span>
+                          <span class="radio-label">No. Rek/No. Tlp</span>
+                        </label>
+                        <label class="radio-custom">
+                          <input type="radio" name="inputTypeModal" value="namaunik" onclick="toggleInputModal()">
+                          <span class="radio-indicator"></span>
+                          <span class="radio-label">Nama Unik</span>
+                        </label>
+                      </div>
+                      <div class="field" id="norekInputModal">
+                        <input id="ewalletNoRek" class="text-lg" placeholder="No. Rekening / No. HP">
+                      </div>
+                      <div class="field" id="namaUnikInputModal" style="display:none;">
+                        <input id="ewalletNamaUnik" class="text-lg" placeholder="Nama Unik (misal: Utama)">
+                      </div>
+                      <div class="mini-label">SALDO AWAL <span style="color:#888;font-size:0.95em;">(opsional, default 0)</span></div>
+                      <div class="field">
+                        <input id="ewalletSaldo" class="text-lg" type="number" min="0" placeholder="0">
+                      </div>
+                      <div id="ewalletRekError" style="color:#c00;font-size:0.98em;margin:8px 0 0 0;display:none;"></div>
+                      <div class="profile-actions">
+                        <button class="btn secondary full" onclick="toggleEwalletRekModal(false)"><span class="btn-label"><span>BATAL</span></span></button>
+                        <button id="btnSaveEwalletRek" class="btn full" onclick="saveEwalletRek_()"><span class="btn-label"><span>SIMPAN</span></span></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- /MODAL: TAMBAH REKENING/EWALLET -->
+            <script>
+            function toggleInputModal() {
+              const tipe = document.querySelector('input[name="inputTypeModal"]:checked').value;
+              document.getElementById('norekInputModal').style.display = tipe === 'norek' ? '' : 'none';
+              document.getElementById('namaUnikInputModal').style.display = tipe === 'namaunik' ? '' : 'none';
+            }
+
+            function saveEwalletRek_() {
+              // ...existing code ambil jenis bank/ewallet...
+              const jenis = document.getElementById('ewalletJenis').value;
+              const tipe = document.querySelector('input[name="inputTypeModal"]:checked').value;
+              let nama = '';
+              if (tipe === 'norek') {
+                const norek = document.getElementById('ewalletNoRek').value;
+                nama = `${jenis} (${norek})`;
+              } else {
+                const namaUnik = document.getElementById('ewalletNamaUnik').value;
+                nama = `${jenis} (${namaUnik})`;
+              }
+              // Lanjutkan proses simpan ke spreadsheet, kolom "Nama" diisi dengan variabel nama
+              alert('Nama yang akan disimpan: ' + nama);
+              // ...existing code submit ke Apps Script, pastikan kolom Nama diisi dengan nama...
+            }
+            </script>
+          <!-- Choices.js JS -->
+          <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+            <script>
+            // ...existing code...
+            function setTujuanJenis_(jenis) {
+              TUJUAN_JENIS = jenis;
+              document.getElementById('btnTujuanBank').classList.toggle('active', jenis==='bank');
+              document.getElementById('btnTujuanEwallet').classList.toggle('active', jenis==='ewallet');
+              const list = jenis==='bank' ? BANK_LIST : EWALLET_LIST;
+              renderJenisList_(list);
+            }
+            function renderJenisList_(list) {
+              const sel = document.getElementById('ewalletJenis');
+              sel.style.display = ''; // pastikan select tampil sebelum inisialisasi Choices.js
+              sel.innerHTML = '<option value="">-- Pilih --</option>';
+              list.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item;
+                opt.textContent = item;
+                sel.appendChild(opt);
+              });
+              // Inisialisasi Choices.js
+              if (choicesJenis) choicesJenis.destroy();
+              choicesJenis = new Choices(sel, {
+                searchEnabled: true,
+                itemSelectText: '',
+                shouldSort: false,
+                placeholderValue: '-- Pilih --',
+                searchPlaceholderValue: 'Cari...',
+                classNames: {
+                  containerInner: 'choices__inner custom-choices',
+                  input: 'choices__input custom-choices-input',
+                }
+              });
+            }
+            // Inisialisasi default
+            setTimeout(()=>setTujuanJenis_('bank'), 100);
+            </script>
+        <style>
+        .dropdown-list {
+          display: none;
+          position: absolute;
+          top: calc(100% + 2px);
+          left: 0; right: 0;
+          background: #23243a;
+          border: 1.5px solid #ff6b9d;
+          border-radius: 7px;
+          box-shadow: 0 3px 14px rgba(0,0,0,0.18);
+          max-height: 190px;
+          overflow-y: auto;
+          z-index: 999;
+        }
+        .dropdown-list.active { display: block; }
+        .dropdown-item {
+          padding: 10px 14px;
+          color: #fff;
+          font-size: 15px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+        .dropdown-item:hover {
+          background: #ff6b9d22;
+          color: #ff6b9d;
+        }
+        .dropdown-list {
+          display: none;
+          position: absolute;
+          top: calc(100% + 2px);
+          left: 0;
+          right: 0;
+          background: #23243a;
+          border: 1.5px solid #ff6b9d;
+          border-radius: 7px;
+          box-shadow: 0 3px 14px rgba(0,0,0,0.18);
+          max-height: 210px;
+          overflow-y: auto;
+          z-index: 1001;
+        }
+        .dropdown-list.active { display: block; }
+        .dropdown-item {
+          padding: 10px 14px;
+          color: #fff;
+          font-size: 15px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+        .dropdown-item:hover {
+          background: #ff6b9d22;
+          color: #ff6b9d;
+        }
+        /* Styling khusus untuk select di modal ewallet/rek */
+        #ewalletRekModal select.styled-select {
+          background: var(--inputBg, #23243a);
+          color: var(--inputText, #f5f5f7);
+          border: 1.5px solid var(--primary, #ff6b9d);
+          border-radius: 7px;
+          padding: 6px 12px 6px 12px;
+          font-size: 15px;
+          font-weight: 900;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+          outline: none;
+          transition: border 0.18s, box-shadow 0.18s;
+          margin-bottom: 6px;
+          width: 100%;
+          appearance: none;
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          min-height: 36px;
+          max-width: 100%;
+          line-height: 1.2;
+        }
+        #ewalletRekModal select.styled-select:focus {
+          border: 1.5px solid var(--accent, #c239b3);
+          box-shadow: 0 0 0 2px #ff6b9d33;
+        }
+        #ewalletRekModal option {
+          color: #f5f5f7;
+          background: #23243a;
+          font-weight: 500;
+          font-size: 1em;
+        }
+        </style>
+        <style>
+        /* Pastikan search box Choices.js selalu tampil */
+        .choices__input {
+          display: block !important;
+          height: auto !important;
+          opacity: 1 !important;
+          color: #fff !important;
+          background: transparent !important;
+          font-size: 15px !important;
+          font-weight: 900 !important;
+          margin: 0 !important;
+          padding: 6px 12px !important;
+        }
+        </style>
+    <!-- MODAL: TAMBAH REKENING/EWALLET -->
+    <div id="ewalletRekModal" class="profile-modal" aria-hidden="true" style="display:none;">
+      <div class="backdrop" onclick="toggleEwalletRekModal(false)"></div>
+      <div class="dialog" role="dialog" aria-modal="true" aria-label="Tambah Rekening/E-Wallet">
+        <div class="card">
+          <div class="head">
+            <div class="title">Tambah Rekening / E-Wallet</div>
+            <button class="iconbtn small" onclick="toggleEwalletRekModal(false)" aria-label="Close">×</button>
+          </div>
+          <div id="ewalletRekModalContent">
+            <div class="profile-grid">
+              <div class="mini-label">PILIH TUJUAN</div>
+              <div class="field" style="display:flex;gap:8px;margin-bottom:8px;">
+                <button type="button" id="btnTujuanBank" class="seg2btn active" onclick="setTujuanJenis_('bank')">🏦 Bank</button>
+                <button type="button" id="btnTujuanEwallet" class="seg2btn" onclick="setTujuanJenis_('ewallet')">💳 E-Wallet</button>
+              </div>
+              <div class="field" style="position:relative;">
+                <input id="ewalletSearch" class="text-lg" placeholder="Cari bank/e-wallet..." style="margin-bottom:6px;display:none;" oninput="filterJenisList_()">
+                <select id="ewalletJenis" class="styled-select" required></select>
+              </div>
+                  <script>
+                  // List bank dan e-wallet
+                  // ...existing code...
+                  function setTujuanJenis_(jenis) {
+                    TUJUAN_JENIS = jenis;
+                    document.getElementById('btnTujuanBank').classList.toggle('active', jenis==='bank');
+                    document.getElementById('btnTujuanEwallet').classList.toggle('active', jenis==='ewallet');
+                    // Tampilkan search jika list panjang
+                    const list = jenis==='bank' ? BANK_LIST : EWALLET_LIST;
+                    document.getElementById('ewalletSearch').style.display = list.length > 8 ? 'block' : 'none';
+                    renderJenisList_(list);
+                  }
+                  function renderJenisList_(list) {
+                    const sel = document.getElementById('ewalletJenis');
+                    sel.innerHTML = '<option value="">-- Pilih --</option>';
+                    list.forEach(item => {
+                      const opt = document.createElement('option');
+                      opt.value = item;
+                      opt.textContent = item;
+                      sel.appendChild(opt);
+                    });
+                    sel.style.display = 'block';
+                  }
+                  function filterJenisList_() {
+                    const search = document.getElementById('ewalletSearch').value.toLowerCase();
+                    const list = TUJUAN_JENIS==='bank' ? BANK_LIST : EWALLET_LIST;
+                    const filtered = list.filter(item => item.toLowerCase().includes(search));
+                    renderJenisList_(filtered);
+                  }
+                  // Inisialisasi default
+                  setTimeout(()=>setTujuanJenis_('bank'), 100);
+                  </script>
+              <div class="mini-label">NO. REK/NO. HP <span style="color:#888;font-size:0.95em;">(pilih salah satu, wajib isi salah satu)</span></div>
+              <div class="field">
+                <input id="ewalletNoRek" class="text-lg" placeholder="No. Rekening / No. HP" oninput="onEwalletInputChange()">
+              </div>
+              <div class="mini-label">NAMA UNIK <span style="color:#888;font-size:0.95em;">(atau, wajib isi salah satu)</span></div>
+              <div class="field">
+                <input id="ewalletNamaUnik" class="text-lg" placeholder="Nama Unik (misal: BRI utama)" oninput="onEwalletInputChange()">
+              </div>
+              <div class="mini-label">SALDO AWAL <span style="color:#888;font-size:0.95em;">(opsional, default 0)</span></div>
+              <div class="field">
+                <input id="ewalletSaldo" class="text-lg" type="number" min="0" placeholder="0">
+              </div>
+              <div id="ewalletRekError" style="color:#c00;font-size:0.98em;margin:8px 0 0 0;display:none;"></div>
+              <div class="profile-actions">
+                <button class="btn secondary full" onclick="toggleEwalletRekModal(false)"><span class="btn-label"><span>BATAL</span></span></button>
+                <button id="btnSaveEwalletRek" class="btn full" onclick="saveEwalletRek_()"><span class="btn-label"><span>SIMPAN</span></span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- /MODAL: TAMBAH REKENING/EWALLET -->
+    <script>
+    function openEwalletRekPage() {
+      toggleMenu(false);
+      toggleEwalletRekModal(true);
+    }
+    function toggleEwalletRekModal(force) {
+      const el = document.getElementById('ewalletRekModal');
+      const isOpen = el.style.display !== 'none';
+      const next = (typeof force === 'boolean') ? force : !isOpen;
+      el.style.display = next ? 'block' : 'none';
+      el.setAttribute('aria-hidden', next ? 'false' : 'true');
+      document.body.style.overflow = next ? 'hidden' : '';
+      if (next) resetEwalletRekForm_();
+    }
+    function resetEwalletRekForm_() {
+      document.getElementById('ewalletJenis').value = '';
+      document.getElementById('ewalletNoRek').value = '';
+      document.getElementById('ewalletNamaUnik').value = '';
+      document.getElementById('ewalletSaldo').value = '';
+      document.getElementById('ewalletRekError').style.display = 'none';
+    }
+    function onEwalletInputChange() {
+      // Pastikan hanya salah satu yang diisi
+      const noRek = document.getElementById('ewalletNoRek').value.trim();
+      const namaUnik = document.getElementById('ewalletNamaUnik').value.trim();
+      if (noRek && namaUnik) {
+        document.getElementById('ewalletNamaUnik').value = '';
+      }
+    }
+    function saveEwalletRek_() {
+      const jenis = document.getElementById('bankSearchInput').value.trim();
+      const noRek = document.getElementById('ewalletNoRek').value.trim();
+      const namaUnik = document.getElementById('ewalletNamaUnik').value.trim();
+      const saldo = Number(document.getElementById('ewalletSaldo').value) || 0;
+      const errorEl = document.getElementById('ewalletRekError');
+      errorEl.style.display = 'none';
+      // Validasi: pastikan jenis ada di list
+      const validList = pilihanTipe === 'bank' ? BANK_LIST : EWALLET_LIST;
+      if (!jenis || !validList.some(n => n.toLowerCase() === jenis.toLowerCase())) {
+        errorEl.textContent = 'Pilih bank/ewallet.';
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (!(noRek || namaUnik)) {
+        errorEl.textContent = 'Isi salah satu: No.Rek/No.HP atau Nama Unik.';
+        errorEl.style.display = 'block';
+        return;
+      }
+      if (noRek && namaUnik) {
+        errorEl.textContent = 'Hanya boleh isi salah satu: No.Rek/No.HP atau Nama Unik.';
+        errorEl.style.display = 'block';
+        return;
+      }
+      // Ambil username dari session (via apiDashboardHeader)
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(function(headerRes){
+          const username = (headerRes && headerRes.username) ? headerRes.username : '';
+          if (!username) {
+            errorEl.textContent = 'Gagal mengambil username dari sesi. Silakan login ulang.';
+            errorEl.style.display = 'block';
+            return;
+          }
+          const data = {
+            jenis,
+            no_rek: noRek,
+            nama_unik: namaUnik,
+            uang: saldo,
+            id_user: '', // biar backend isi
+            nama: '', // biar backend isi jika perlu
+            username // <-- penting: kirim username ke backend
+          };
+          google.script.run.withSuccessHandler(function(res){
+            if(res && res.debug){
+              console.log('DEBUG:', res.debug);
+            }
+            if(res && res.ok){
+              toggleEwalletRekModal(false);
+              showToast('Rekening/E-Wallet berhasil ditambahkan','success');
+            }else{
+              errorEl.textContent = res && res.message ? res.message : 'Gagal menambah data.';
+              errorEl.style.display = 'block';
+            }
+          }).addWalletRekening(data);
+        }).apiDashboardHeader();
+      } else {
+        errorEl.textContent = 'Fitur hanya tersedia di Google Sheets dialog/sidebar.';
+        errorEl.style.display = 'block';
+      }
+    }
+    </script>
+<style>
+.input-radio-group {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 12px;
+  justify-content: flex-start;
+}
+.radio-custom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05em;
+  cursor: pointer;
+}
+.radio-custom input[type="radio"] {
+  display: none;
+}
+.radio-indicator {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #ff4081;
+  background: #222;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s;
+}
+.radio-custom input[type="radio"]:checked + .radio-indicator {
+  border-color: #00e676;
+  background: #222;
+}
+.radio-indicator::after {
+  content: '';
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: transparent;
+  transition: background 0.2s;
+}
+.radio-custom input[type="radio"]:checked + .radio-indicator::after {
+  background: #00e676;
+}
+.radio-label {
+  color: #fff;
+  font-weight: 500;
+}
+</style>
 <script>
+// Konfigurasi blokir akses ke App2
+var BlockApp2 = 'Ya'; // Akan dioverride dari Kode.gs (apiGetApp2PageConfig)
+var App2OpenMode = '2'; // '1' = same tab, '2' = new tab
+
+function loadApp2PageConfig_() {
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+  try {
+    google.script.run.withSuccessHandler(function(res){
+      if (!res || !res.ok) return;
+      BlockApp2 = String(res.BlockApp2 || BlockApp2);
+      App2OpenMode = String(res.App2OpenMode || App2OpenMode);
+      console.log('[APP2 CONFIG] BlockApp2=', BlockApp2, '| App2OpenMode=', App2OpenMode);
+    }).apiGetApp2PageConfig();
+  } catch (e) {}
+}
+
+function showApp2BlockedPopup() {
+  // Jika modal sudah ada, tampilkan saja
+  var modal = document.getElementById('app2BlockedModal');
+  if (modal) {
+    modal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    return;
+  }
+  // Modal belum ada, buat elemen
+  modal = document.createElement('div');
+  modal.id = 'app2BlockedModal';
+  modal.className = 'xmodal';
+  modal.style.display = 'block';
+  modal.innerHTML = `
+    <div class="xbackdrop" onclick="closeApp2BlockedModal()"></div>
+    <div class="xdialog" role="dialog" aria-modal="true" aria-label="Pengembangan">
+      <div class="xcard">
+        <div class="xhead">
+          <div class="xtitle" style="font-size:1.2em;">Aplikasi Sedang Dalam Pengembangan</div>
+          <button class="iconbtn small" onclick="closeApp2BlockedModal()" aria-label="Tutup">×</button>
+        </div>
+        <div class="xbody" style="text-align:center;padding:18px 0 8px 0;">
+          <div style="font-size:1.1em; color:var(--primary); font-weight:600; margin-bottom:10px;">Mohon maaf, fitur ini belum tersedia.</div>
+          <div style="color:var(--text2);font-size:0.98em;">Aplikasi ini sedang dalam pengembangan.<br>Silakan cek kembali di lain waktu.</div>
+        </div>
+        <div style="text-align:center;padding:10px 0 8px 0;">
+          <button class="btn primary" onclick="closeApp2BlockedModal()">OK</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.body.style.overflow = 'hidden';
+}
+
+function closeApp2BlockedModal() {
+  var modal = document.getElementById('app2BlockedModal');
+  if (modal) {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+}
+
 function isInGoogleSheetsDialog() {
   // Deteksi dialog/sidebar Google Sheets (bukan web app)
   // google.script.run & google.script.host hanya ada di dialog/sidebar
@@ -24,7 +704,11 @@ function isInGoogleSheetsDialog() {
 }
 function openApp2Page() {
   toggleMenu(false); // Tutup menu modal
-  // Deteksi apakah di dialog/sidebar atau web app
+  if (BlockApp2 === 'Ya') {
+    showApp2BlockedPopup();
+    return;
+  }
+  var mode = String(App2OpenMode || '1');
   var isDialog = false;
   try {
     isDialog = (
@@ -38,12 +722,26 @@ function openApp2Page() {
   if (isDialog) {
     // Dialog/sidebar: gunakan google.script.run
     google.script.run.withSuccessHandler(function(url) {
-      window.open(url + '?page=app2', '_blank');
+      var targetUrl = url + '?page=app2';
+      if (mode === '2') {
+        window.open(targetUrl, '_blank');
+      } else {
+        try {
+          window.top.location.href = targetUrl;
+        } catch (e) {
+          window.location.href = targetUrl;
+        }
+      }
     }).getAppUrl();
   } else {
     // Web app: langsung redirect
     var baseUrl = window.location.origin + window.location.pathname;
-    window.location.href = baseUrl + '?page=app2';
+    var targetUrl = baseUrl + '?page=app2';
+    if (mode === '2') {
+      window.open(targetUrl, '_blank');
+    } else {
+      window.location.href = targetUrl;
+    }
   }
 }
 function openTentangPage() {
@@ -60,6 +758,8 @@ function openTentangPage() {
     }, 150);
   }
 }
+
+document.addEventListener('DOMContentLoaded', loadApp2PageConfig_);
 </script>
 <script>
 // Fungsi untuk mengganti konten utama dengan HTML baru (untuk sidebar/dialog)
@@ -78,6 +778,49 @@ function showDynamicPage(html) {
 <html>
   <head>
         <script>
+        // --- Autocomplete Dropdown Bank/Ewallet ---
+        const BANK_LIST = [
+          "Bank Mandiri (BMRI)", "Bank Rakyat Indonesia (BRI)", "Bank Negara Indonesia (BNI)", "Bank Tabungan Negara (BTN)",
+          "Bank Central Asia (BCA)", "Bank CIMB Niaga (CIMB Niaga)", "Bank Danamon (BDMN)", "Bank Permata (BNLI)", "Bank Panin (PNBN)", "Bank OCBC NISP (NISP)", "Bank Mega (MEGA)", "Bank Sinarmas (BSIM)", "Bank Mayapada (MAYA)", "Bank Capital Indonesia (BACA)", "Bank Bukopin (BBKP)", "Bank Victoria (BVIC)", "Bank Artha Graha Internasional (INPC)", "Bank Maspion Indonesia (BMAS)", "Bank Jago (ARTO)", "Bank Neo Commerce (BBYB)", "Allo Bank (BBHI)", "Bank Raya Indonesia (AGRO)", "Bank Amar Indonesia (AMAR)", "SeaBank Indonesia (BSEA)", "Bank BTPN (BTPN)"
+        ];
+        const EWALLET_LIST = ["GoPay","OVO","DANA","ShopeePay","LinkAja","Jenius (milik BTPN)","i.saku","Sakuku","DOKU","AstraPay","MotionPay","KasPro","Paytren"];
+        let pilihanTipe = 'bank';
+        function setTipeBankEwallet(tipe) {
+          pilihanTipe = tipe;
+          document.getElementById('bankSearchInput').value = '';
+          filterBankDropdown();
+        }
+        function getList() {
+          return pilihanTipe === 'bank' ? BANK_LIST : EWALLET_LIST;
+        }
+        function showBankDropdown() {
+          filterBankDropdown();
+          document.getElementById("bankDropdown").classList.add("active");
+        }
+        function filterBankDropdown() {
+          const kw = document.getElementById("bankSearchInput").value.toLowerCase();
+          const filtered = getList().filter(n => n.toLowerCase().includes(kw));
+          const dropdown = document.getElementById("bankDropdown");
+          dropdown.innerHTML = "";
+          filtered.forEach(val => {
+            const item = document.createElement("div");
+            item.className = "dropdown-item";
+            item.textContent = val;
+            item.onclick = () => {
+              document.getElementById("bankSearchInput").value = val;
+              dropdown.classList.remove("active");
+              // tambahkan logic callback di sini bila perlu
+            };
+            dropdown.appendChild(item);
+          });
+          dropdown.classList.toggle("active", filtered.length > 0);
+        }
+        // Agar dropdown tertutup bila klik luar
+        document.addEventListener("click", e => {
+          if (!e.target.closest("#bankSearchInput") && !e.target.closest("#bankDropdown")) {
+            document.getElementById("bankDropdown").classList.remove("active");
+          }
+        });
         function goHome(){
           if (typeof google !== 'undefined' && google.script && google.script.run) {
             google.script.run.withSuccessHandler(url => top.location.href = url).getHomeUrl();
@@ -89,9 +832,10 @@ function showDynamicPage(html) {
     <base target="_top">
     <?!= include('stylesdashboard'); ?>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta http-equiv="Content-Security-Policy" content="img-src 'self' data: https: http:;">
     <style id="themeStyle"></style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   </head>
   <body class="dashboard">
     <div class="shell">
@@ -132,13 +876,13 @@ function showDynamicPage(html) {
           <div class="spark blue" aria-hidden="true"></div>
           <div class="head">
             <div>
-              <div class="kicker">Uang di Rekening</div>
-              <div class="value-xl compact" id="vTotalUang" style="text-align:right;">-</div>
-              <div class="value-sub compact">Saldo rekening saat ini</div>
+              <div class="kicker" id="kickerUangUser">Uang</div>
+              <div class="value-xl compact" id="vTotalUang">-</div>
+              <div class="value-sub compact">Saldo uang utama saat ini</div>
             </div>
             <div class="card-actions">
               <button class="mini-btn glow" type="button" onclick="openTxRekeningModal_()">+ Transaksi</button>
-              <div class="pill">TOTAL</div>
+              <button class="pill pill-btn" type="button" onclick="openTotalRekeningModal_()" aria-label="Lihat total rekening">TOTAL</button>
             </div>
           </div>
         </div>
@@ -148,12 +892,23 @@ function showDynamicPage(html) {
           <div class="head">
             <div>
               <div class="kicker">Uang Tabungan</div>
-              <div class="value-xl compact" id="vTotalTabungan" style="text-align:right;">-</div>
+              <div class="value-xl compact" id="vTotalTabungan">-</div>
               <div class="value-sub compact">Saldo tabungan saat ini</div>
             </div>
             <div class="card-actions">
               <button class="mini-btn glow" type="button" onclick="openTabunganModal_()">+ Tabungan</button>
               <div class="pill">SAVING</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cardx compact">
+          <div class="spark blue" aria-hidden="true"></div>
+          <div class="head">
+            <div>
+              <div class="kicker">Uang di Rekening</div>
+              <div class="value-xl compact" id="vSaldoRekeningTotal">-</div>
+              <div class="value-sub compact">Total saldo project dan saldo utama</div>
             </div>
           </div>
         </div>
@@ -204,7 +959,11 @@ function showDynamicPage(html) {
 
                 <!-- Filter untuk Tabel -->
                 <div id="filterTabel" class="filter-table-wrapper" style="display:none;">
-                  <input id="tableDateFilter" class="filter-table-input" type="date" placeholder="Tanggal">
+                  <div class="filter-table-date-range">
+                    <input id="tableDateStartFilter" class="filter-table-input" type="date" placeholder="Dari">
+                    <span class="table-date-sep" aria-hidden="true">→</span>
+                    <input id="tableDateEndFilter" class="filter-table-input" type="date" placeholder="Sampai">
+                  </div>
                   <select id="tableTypeFilter" class="filter-table-select">
                     <option value="">Semua Jenis</option>
                   </select>
@@ -246,7 +1005,7 @@ function showDynamicPage(html) {
                 <div class="report-title">TABUNGAN</div>
 
                 <div class="report-row">
-                  <div class="report-k">Tabungan Masuk (manual + rekening)</div>
+                  <div class="report-k">Tabungan Masuk</div>
                   <div class="report-v" id="dTabMasuk">-</div>
                 </div>
 
@@ -286,10 +1045,12 @@ function showDynamicPage(html) {
                   <button id="btnTabRekening" class="seg2btn active" onclick="switchTable_('rekening')">📁 Rekening</button>
                   <button id="btnTabTabungan" class="seg2btn" onclick="switchTable_('tabungan')">💰 Tabungan</button>
                 </div>
+                <div class="table-export" id="tableExportWrap">
+                  <button id="btnExportTable" class="btn-page btn-export" type="button" onclick="toggleExportModal_(true)">⬇ Unduh</button>
+                </div>
               </div>
               
               <div class="table-toolbar-right">
-                <label class="control-label" style="margin:0;">PER HALAMAN</label>
                 <select id="tablePagination" class="control-select" style="min-width:70px;height:36px;" onchange="changeTablePagination_()">
                   <option value="10">10</option>
                   <option value="15" selected>15</option>
@@ -311,10 +1072,11 @@ function showDynamicPage(html) {
                       <th>Keperluan</th>
                       <th>Nominal</th>
                       <th>Keterangan</th>
+                      <th>Struck</th>
                     </tr>
                   </thead>
                   <tbody id="tableRekeningBody">
-                    <tr><td colspan="5" class="table-empty">Memuat data...</td></tr>
+                    <tr><td colspan="6" class="table-empty">Memuat data...</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -328,10 +1090,11 @@ function showDynamicPage(html) {
                       <th>Tanggal</th>
                       <th>Nominal</th>
                       <th>Keterangan</th>
+                      <th>Struck</th>
                     </tr>
                   </thead>
                   <tbody id="tableTabunganBody">
-                    <tr><td colspan="4" class="table-empty">Memuat data...</td></tr>
+                    <tr><td colspan="5" class="table-empty">Memuat data...</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -350,9 +1113,99 @@ function showDynamicPage(html) {
               <span id="tableSummary">Menampilkan 0 dari 0 data</span>
             </div>
           </div>
+
+          <!-- Modal Unduh Laporan Tabel -->
+          <div id="exportModal" class="xmodal" aria-hidden="true" style="display:none;">
+            <div class="xbackdrop" onclick="toggleExportModal_(false)"></div>
+            <div class="xdialog" role="dialog" aria-modal="true" aria-label="Unduh Laporan Tabel">
+              <div class="xcard export-card">
+                <div class="xhead">
+                  <div class="xtitle">Unduh Laporan Tabel</div>
+                  <button class="iconbtn small" onclick="toggleExportModal_(false)" aria-label="Close">×</button>
+                </div>
+
+                <div class="xbody">
+                  <div class="export-form">
+                    <div class="export-field">
+                      <div class="mini-label">1. PILIH DATA</div>
+                      <select id="exportTableType" class="styled-select export-select">
+                        <option value="rekening">Rekening</option>
+                        <option value="tabungan">Tabungan</option>
+                      </select>
+                    </div>
+
+                    <div class="export-field">
+                      <div class="mini-label">2. FORMAT FILE</div>
+                      <select id="exportFileType" class="styled-select export-select">
+                        <option value="pdf">PDF</option>
+                        <option value="excel">Excel</option>
+                      </select>
+                    </div>
+
+                    <div class="export-field">
+                      <div class="mini-label">3. RENTANG TANGGAL (OPSIONAL)</div>
+                      <div class="date-row export-date-row">
+                        <input id="exportDateStart" class="date-input export-date" type="date" placeholder="Dari">
+                        <span class="date-sep export-date-sep">→</span>
+                        <input id="exportDateEnd" class="date-input export-date" type="date" placeholder="Sampai">
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="xnote export-note">
+                    Jika tanggal tidak diisi, sistem mengunduh semua data dalam 1 tahun terakhir.<br>
+                    Maksimal rentang unduh adalah 1 tahun.
+                  </div>
+                </div>
+
+                <div class="xactions">
+                  <button class="btn secondary full" type="button" onclick="toggleExportModal_(false)">BATAL</button>
+                  <button class="btn full" type="button" onclick="exportCurrentTableFromModal_()">UNDUH</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- ===== MODAL: TOTAL REKENING (DATA2) ===== -->
+    <div id="totalRekeningModal" class="xmodal" aria-hidden="true" style="display:none;">
+      <div class="xbackdrop" onclick="toggleTotalRekeningModal_(false)"></div>
+      <div class="xdialog" role="dialog" aria-modal="true" aria-label="Total Rekening">
+        <div class="xcard">
+          <div class="xhead">
+            <div class="xtitle">Detail Rekening</div>
+            <button class="iconbtn small" onclick="toggleTotalRekeningModal_(false)" aria-label="Close">×</button>
+          </div>
+
+          <div class="xbody">
+            <div class="mini-label">DATA REKENING (SHEET DATA2)</div>
+            <div class="table-wrapper" style="margin-top:8px;">
+              <div class="table-scroll" style="max-height:340px;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Nama</th>
+                      <th>Wallet</th>
+                      <th>Saldo</th>
+                    </tr>
+                  </thead>
+                  <tbody id="totalRekeningTableBody">
+                    <tr><td colspan="3" class="table-empty">Memuat data...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="xactions">
+            <button class="btn secondary full" type="button" onclick="toggleTotalRekeningModal_(false)">TUTUP</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ===== /MODAL: TOTAL REKENING ===== -->
 
     <!-- ===== MODAL: TRANSAKSI REKENING ===== -->
     <div id="txRekModal" class="xmodal" aria-hidden="true" style="display:none;">
@@ -375,6 +1228,31 @@ function showDynamicPage(html) {
               <button id="txrJenisTabungan" class="seg2btn" type="button" onclick="setTxJenis_('tabungan')">Tabungan</button>
             </div>
 
+            <div class="mini-label" style="margin-top:12px;">METODE TRANSAKSI</div>
+            <select id="txrMetode" class="styled-select" style="width:100%;margin-bottom:8px;">
+              <option value="cash">Cash</option>
+            </select>
+            <div id="txrMetodeSaldoInfo" style="margin:-2px 0 8px 0;font-size:.86rem;color:var(--muted, rgba(255,255,255,.7));">Saldo metode: -</div>
+
+            <div class="mini-label" id="txrTransferModeLabel" style="margin-top:12px;display:none;">JENIS PEMINDAHAN (khusus Tabungan)</div>
+            <div class="seg2" id="txrTransferModeGroup" style="display:none;">
+              <label class="radio-custom" style="flex:1;">
+                <input type="radio" name="transferModeRek" value="tetap" checked onchange="updateRekeningTransferMode_()">
+                <span class="radio-indicator"></span>
+                <span class="radio-label">Tetap (Pencatatan)</span>
+              </label>
+              <label class="radio-custom" style="flex:1;">
+                <input type="radio" name="transferModeRek" value="pindah" onchange="updateRekeningTransferMode_()">
+                <span class="radio-indicator"></span>
+                <span class="radio-label">Pindah (Transfer)</span>
+              </label>
+            </div>
+
+            <div class="mini-label" id="txrMetodeTujuanLabel" style="margin-top:12px;display:none;">METODE TUJUAN (Pindah ke...)</div>
+            <select id="txrMetodeTujuan" class="styled-select" style="width:100%;margin-bottom:8px;display:none;">
+              <option value="">-- Pilih Metode Tujuan --</option>
+            </select>
+
             <div class="mini-label" style="margin-top:12px;">NOMINAL</div>
             <div class="field field-lg">
               <span class="prefix">Rp</span>
@@ -389,13 +1267,38 @@ function showDynamicPage(html) {
             <div class="mini-label" style="margin-top:12px;">UPLOAD STRUCK (opsional)</div>
             <div class="field field-lg">
               <div class="file-upload-wrapper">
-                <input id="txrStruck" class="file-upload-input" type="file" accept="image/*,application/pdf" style="display:none;">
+                <input id="txrStruck" class="file-upload-input" type="file" accept="image/*,application/pdf" multiple style="display:none;">
                 <label for="txrStruck" class="file-upload-label">
                   <span class="file-upload-icon">📎</span>
-                  <span id="struckUploadText" class="file-upload-text">Pilih file bukti...</span>
+                  <span id="struckUploadText" class="file-upload-text">Pilih file bukti (bisa lebih dari 1)...</span>
                 </label>
               </div>
-              <style>
+              <!-- CSS radio-group dipindah ke bawah agar tidak tampil sebagai teks -->
+                <style>
+                  .tujuan-radio-group {
+                    display: flex;
+                    gap: 0;
+                    margin-bottom: 12px;
+                    justify-content: flex-start;
+                  }
+                  .tujuan-radio input[type="radio"] {
+                    display: none;
+                  }
+                  .tujuan-radio .radio-label {
+                    font-size: 1.08em;
+                    font-weight: 700;
+                  }
+                  .tujuan-radio .radio-indicator {
+                    border-color: #ffb6c1;
+                  }
+                  .tujuan-radio input[type="radio"]:checked + .radio-indicator {
+                    border-color: #ff4081;
+                  }
+                  .tujuan-radio input[type="radio"]:checked + .radio-indicator::after {
+                    background: #ff4081;
+                  }
+                </style>
+                <style>
                 .file-upload-wrapper {
                   display: flex;
                   align-items: center;
@@ -442,10 +1345,13 @@ function showDynamicPage(html) {
                 var struckText = document.getElementById('struckUploadText');
                 if(struckInput && struckText) {
                   struckInput.addEventListener('change', function() {
-                    if (struckInput.files && struckInput.files[0]) {
+                    const fileCount = struckInput.files ? struckInput.files.length : 0;
+                    if (fileCount === 1) {
                       struckText.textContent = struckInput.files[0].name;
+                    } else if (fileCount > 1) {
+                      struckText.textContent = fileCount + ' file dipilih (akan digabung jadi 1 file)';
                     } else {
-                      struckText.textContent = 'Pilih file bukti...';
+                      struckText.textContent = 'Pilih file bukti (bisa lebih dari 1)...';
                     }
                   });
                 }
@@ -456,7 +1362,7 @@ function showDynamicPage(html) {
 
             <div class="xnote">
               Tips: cukup pilih salah satu jenis, lalu isi nominal. Keterangan boleh kosong.<br>
-              Upload struck: file bukti transaksi (foto/pdf) akan disimpan ke Google Drive dan link otomatis tercatat.
+              Upload struck: bisa pilih lebih dari 1 file (foto/pdf), lalu otomatis digabung jadi 1 file saat upload.
             </div>
           </div>
 
@@ -494,6 +1400,31 @@ function showDynamicPage(html) {
               <button id="txtModePakai" class="seg2btn" type="button" onclick="setTabMode_('pakai')">Pakai</button>
             </div>
 
+            <div class="mini-label" id="transferModeLabel" style="margin-top:12px;display:none;">JENIS PEMINDAHAN (Mode pakai saja)</div>
+            <div class="seg2" id="transferModeGroup" style="display:none;">
+              <label class="radio-custom" style="flex:1;">
+                <input type="radio" name="transferMode" value="tetap" checked onchange="updateTransferMode_()">
+                <span class="radio-indicator"></span>
+                <span class="radio-label">Tetap (Pencatatan)</span>
+              </label>
+              <label class="radio-custom" style="flex:1;">
+                <input type="radio" name="transferMode" value="pindah" onchange="updateTransferMode_()">
+                <span class="radio-indicator"></span>
+                <span class="radio-label">Pindah (Transfer)</span>
+              </label>
+            </div>
+
+            <div class="mini-label" style="margin-top:12px;">METODE TRANSAKSI</div>
+            <select id="txtMetode" class="styled-select" style="width:100%;margin-bottom:8px;">
+              <option value="cash">Cash</option>
+            </select>
+            <div id="txtMetodeSaldoInfo" style="margin:-2px 0 8px 0;font-size:.86rem;color:var(--muted, rgba(255,255,255,.7));">Saldo metode: -</div>
+
+            <div class="mini-label" style="margin-top:12px;display:none;" id="metodeTujuanLabel">METODE TUJUAN (Pindah ke...)</div>
+            <select id="txtMetodeTujuan" class="styled-select" style="width:100%;margin-bottom:8px;display:none;">
+              <option value="">-- Pilih Metode Tujuan --</option>
+            </select>
+
             <div class="mini-label" style="margin-top:12px;">KETERANGAN</div>
             <div class="field field-lg">
               <input id="txtKeperluan" class="text-lg" placeholder="Contoh: nabung manual / bayar kos / servis motor">
@@ -523,6 +1454,127 @@ function showDynamicPage(html) {
       </div>
     </div>
     <!-- ===== /MODAL: TRANSAKSI TABUNGAN ===== -->
+
+    <!-- ===== MODAL: KONFIRMASI AMBIL TABUNGAN ===== -->
+    <div id="topupConfirmModal" class="xmodal" aria-hidden="true" style="display:none;">
+      <div class="xbackdrop" onclick="toggleTopupConfirmModal_(false)"></div>
+      <div class="xdialog topup-dialog" role="dialog" aria-modal="true" aria-label="Konfirmasi Ambil dari Tabungan">
+        <div class="xcard topup-card">
+          <div class="xhead">
+            <div class="xtitle">Saldo Rekening Kurang</div>
+            <button class="iconbtn small" onclick="toggleTopupConfirmModal_(false)" aria-label="Close">×</button>
+          </div>
+          <div class="xbody">
+            <div class="topup-info">
+              <div class="topup-row"><span>Saldo Rekening</span><b id="topupSaldoRekening">Rp 0</b></div>
+              <div class="topup-row"><span>Nominal Transaksi</span><b id="topupNominal">Rp 0</b></div>
+              <div class="topup-row topup-shortfall"><span>Kekurangan</span><b id="topupKekurangan">Rp 0</b></div>
+              <div class="topup-row"><span>Saldo Tabungan</span><b id="topupSaldoTabungan">Rp 0</b></div>
+            </div>
+            <div class="mini-label" style="margin-top:12px;">AMBIL DARI TABUNGAN</div>
+            <div class="field field-lg">
+              <span class="prefix">Rp</span>
+              <input id="topupNominalInput" class="money" inputmode="numeric" placeholder="0" oninput="formatMoneyInput_(this)">
+            </div>
+            <div class="xnote" id="topupHint" style="margin-top:8px;">
+              Minimal sebesar kekurangan transaksi.
+            </div>
+            <div class="xnote" style="margin-top:10px;">
+              Pengambilan ini akan menambah saldo rekening, lalu transaksi utama diproses.
+            </div>
+          </div>
+          <div class="xactions">
+            <button class="btn secondary full" type="button" onclick="toggleTopupConfirmModal_(false)">BATAL</button>
+            <button id="btnConfirmTopup" class="btn full" type="button" onclick="confirmTopupAndSave_()">
+              <span class="btn-label"><span>AMBIL DARI TABUNGAN</span></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ===== /MODAL: KONFIRMASI AMBIL TABUNGAN ===== -->
+
+    <style>
+      .pill-btn{
+        appearance: none;
+        -webkit-appearance: none;
+        border: 1px solid rgba(255,255,255,0.14);
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+      #txRekModal .xbody{
+        padding-top: 12px;
+      }
+      #txRekModal .mini-label{
+        margin-top: 8px !important;
+        letter-spacing: 0.08em;
+      }
+      #txRekModal #txrTransferModeGroup{
+        margin-bottom: 4px;
+      }
+      #txRekModal #txrTransferModeGroup .radio-label{
+        font-size: 0.98em;
+      }
+      #txRekModal .xnote{
+        margin-top: 8px;
+        padding: 8px 10px;
+        font-size: 0.9em;
+        line-height: 1.35;
+      }
+      #txRekModal select.styled-select,
+      #txTabModal select.styled-select{
+        background: var(--inputBg);
+        color: var(--inputText);
+        border: 1.5px solid var(--inputBorder);
+      }
+      #txRekModal select.styled-select:focus,
+      #txTabModal select.styled-select:focus{
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 22%, transparent);
+      }
+      #txRekModal select.styled-select option,
+      #txTabModal select.styled-select option{
+        background: var(--card);
+        color: var(--text);
+      }
+      #txRekModal select.styled-select option:disabled,
+      #txTabModal select.styled-select option:disabled{
+        color: var(--muted);
+      }
+      .topup-dialog{
+        max-width: 460px;
+      }
+      .topup-card .xbody{
+        padding-top: 8px;
+      }
+      .topup-info{
+        border: 1px solid var(--inputBorder);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--card2) 74%, transparent);
+        padding: 10px 12px;
+      }
+      .topup-row{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        color: var(--text);
+        font-size: 0.96em;
+        padding: 6px 0;
+        border-bottom: 1px dashed color-mix(in srgb, var(--inputBorder) 70%, transparent);
+      }
+      .topup-row:last-child{
+        border-bottom: 0;
+      }
+      .topup-row b{
+        color: var(--text);
+        font-weight: 900;
+      }
+      .topup-shortfall b{
+        color: var(--danger, #ff6b6b);
+      }
+    </style>
 
     <!-- POPUP MENU (MODAL) -->
     <div id="menuModal" class="menu-modal" aria-hidden="true">
@@ -555,7 +1607,10 @@ function showDynamicPage(html) {
               <span class="btn-label"><span>UBAH PROFIL</span></span>
             </button>
             <button class="btn secondary full" onclick="openApp2Page()">
-              <span class="btn-label"><span>KEUANGAN 1</span></span>
+              <span class="btn-label"><span>BENDAHARA</span></span>
+            </button>
+            <button class="btn secondary full" onclick="openEwalletRekPage()">
+              <span class="btn-label"><span>+WALLET</span></span>
             </button>
             <button class="btn secondary full" onclick="openTentangPage()">
               <span class="btn-label"><span>TENTANG</span></span>
@@ -732,9 +1787,24 @@ function showDynamicPage(html) {
         }).apiGetAppUrl();
       }
 
+      const DASH_CLIENT_CFG = {
+        sessionTokenKey: 'sessionToken'
+      };
+
+      function loadDashboardCentralConfig_(){
+        if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+        google.script.run.withSuccessHandler(function(res){
+          const cfg = res && res.ok && res.config ? res.config : null;
+          if (!cfg) return;
+          const auth = cfg.AUTH || {};
+          DASH_CLIENT_CFG.sessionTokenKey = String(auth.SESSION_TOKEN_KEY || DASH_CLIENT_CFG.sessionTokenKey);
+        }).apiGetCentralConfig();
+      }
+
       // Get session token from storage (sessionStorage or localStorage)
       function getSessionToken(){
-        return sessionStorage.getItem('sessionToken') || localStorage.getItem('sessionToken') || '';
+        const key = DASH_CLIENT_CFG.sessionTokenKey || 'sessionToken';
+        return sessionStorage.getItem(key) || localStorage.getItem(key) || '';
       }
 
       function startClock(){
@@ -888,7 +1958,12 @@ function showDynamicPage(html) {
         google.script.run.withSuccessHandler(res=>{
           if(!res || !res.ok) return;
           const nama = res.nama || res.username || '-';
+          const namaDepan = String(res.namaDepan || nama || '').trim().split(/\s+/)[0] || 'User';
+          CURRENT_USER_NAME_ = nama;
+          CURRENT_USERNAME_ = String(res.username || '').trim();
           document.getElementById('navName').textContent = nama;
+          const kickerUangUser = document.getElementById('kickerUangUser');
+          if (kickerUangUser) kickerUangUser.textContent = 'Uang ' + namaDepan;
           // Sinkronisasi profil popup menu
           document.getElementById('popupProfileName').textContent = nama;
           document.getElementById('popupProfileEmail').textContent = res.email || '';
@@ -964,6 +2039,9 @@ function showDynamicPage(html) {
           toggleMenu(false);
           toggleTxRekeningModal_(false);
           toggleTabunganModal_(false);
+          toggleTopupConfirmModal_(false);
+          toggleTotalRekeningModal_(false);
+          toggleExportModal_(false);
         }
       });
 
@@ -1252,7 +2330,63 @@ function showDynamicPage(html) {
       function isAnyTxModalOpen_(){
         const a = document.getElementById('txRekModal');
         const b = document.getElementById('txTabModal');
-        return (a && a.style.display !== 'none') || (b && b.style.display !== 'none');
+        const c = document.getElementById('totalRekeningModal');
+        return (a && a.style.display !== 'none') || (b && b.style.display !== 'none') || (c && c.style.display !== 'none');
+      }
+
+      function toggleTotalRekeningModal_(force){
+        const el = document.getElementById('totalRekeningModal');
+        if (!el) return;
+
+        const isOpen = el.style.display !== 'none';
+        const next = (typeof force === 'boolean') ? force : !isOpen;
+
+        el.style.display = next ? 'block' : 'none';
+        el.setAttribute('aria-hidden', next ? 'false' : 'true');
+        document.body.style.overflow = (next || isProfileOpen_() || (document.getElementById('menuModal').style.display !== 'none')) ? 'hidden' : '';
+
+        if (next) loadTotalRekeningTable_();
+      }
+
+      function openTotalRekeningModal_(){
+        toggleMenu(false);
+        toggleProfile(false);
+        toggleTxRekeningModal_(false);
+        toggleTabunganModal_(false);
+        toggleTotalRekeningModal_(true);
+      }
+
+      function loadTotalRekeningTable_(){
+        const tbody = document.getElementById('totalRekeningTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = '<tr><td colspan="3" class="table-empty">Memuat data...</td></tr>';
+
+        if (!(typeof google !== 'undefined' && google.script && google.script.run)) {
+          tbody.innerHTML = '<tr><td colspan="3" class="table-empty">Google Script tidak tersedia</td></tr>';
+          return;
+        }
+
+        google.script.run.withSuccessHandler(function(res){
+          if (!res || !res.ok) {
+            tbody.innerHTML = '<tr><td colspan="3" class="table-empty">' + escapeHtml_((res && res.message) || 'Gagal memuat data') + '</td></tr>';
+            return;
+          }
+
+          const rows = Array.isArray(res.rows) ? res.rows : [];
+          if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="3" class="table-empty">Belum ada data rekening untuk user ini</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = rows.map(function(item){
+            return '<tr>' +
+              '<td>' + escapeHtml_(item.nama || '-') + '</td>' +
+              '<td>' + escapeHtml_(item.wallet || '-') + '</td>' +
+              '<td class="td-nominal">' + fmtNum(Number(item.saldo || 0)) + '</td>' +
+            '</tr>';
+          }).join('');
+        }).apiGetRekeningWalletTable();
       }
 
       function toggleTxRekeningModal_(force){
@@ -1299,9 +2433,27 @@ function showDynamicPage(html) {
         }
       }
 
+      function toggleTopupConfirmModal_(force){
+        const el = document.getElementById('topupConfirmModal');
+        if (!el) return;
+        const isOpen = el.style.display !== 'none';
+        const next = (typeof force === 'boolean') ? force : !isOpen;
+        el.style.display = next ? 'block' : 'none';
+        el.setAttribute('aria-hidden', next ? 'false' : 'true');
+        document.body.style.overflow = (next || isAnyTxModalOpen_() || isProfileOpen_() || (document.getElementById('menuModal').style.display !== 'none')) ? 'hidden' : '';
+        if (!next) {
+          window.PENDING_TX_REKENING_ = null;
+          window.PENDING_TOPUP_RULES_ = null;
+          const topupInput = document.getElementById('topupNominalInput');
+          if (topupInput) topupInput.value = '';
+          setBtnLoading('btnConfirmTopup', false);
+        }
+      }
+
       function openTxRekeningModal_(){
         toggleMenu(false);
         toggleProfile(false);
+        toggleTopupConfirmModal_(false);
         toggleTabunganModal_(false);
         toggleTxRekeningModal_(true);
       }
@@ -1309,11 +2461,28 @@ function showDynamicPage(html) {
       function openTabunganModal_(){
         toggleMenu(false);
         toggleProfile(false);
+        toggleTopupConfirmModal_(false);
         toggleTxRekeningModal_(false);
         toggleTabunganModal_(true);
       }
 
       let TX_JENIS_ = 'pengeluaran';
+      function _normalizeMetodeCompare_(v){
+        return String(v || '').trim().replace(/\s+/g, ' ').toLowerCase();
+      }
+
+      function _bindRekeningMetodeChange_(){
+        const metodeSelect = document.getElementById('txrMetode');
+        if (!metodeSelect || metodeSelect.dataset.tujuanBound === '1') return;
+        metodeSelect.addEventListener('change', function() {
+          const transferMode = document.querySelector('input[name="transferModeRek"]:checked');
+          if (TX_JENIS_ === 'tabungan' && transferMode && transferMode.value === 'pindah') {
+            updateMetodeDropdownTujuanRekening_();
+          }
+        });
+        metodeSelect.dataset.tujuanBound = '1';
+      }
+
       function setTxJenis_(jenis){
         TX_JENIS_ = String(jenis || '').toLowerCase();
         ['pengeluaran','pemasukan','tabungan'].forEach(k=>{
@@ -1322,6 +2491,90 @@ function showDynamicPage(html) {
             k === 'pemasukan' ? 'txrJenisPemasukan' : 'txrJenisTabungan';
           document.getElementById(id).classList.toggle('active', k === TX_JENIS_);
         });
+
+        const transferModeLabel = document.getElementById('txrTransferModeLabel');
+        const transferModeGroup = document.getElementById('txrTransferModeGroup');
+        const showTransfer = TX_JENIS_ === 'tabungan';
+
+        if (transferModeLabel) transferModeLabel.style.display = showTransfer ? '' : 'none';
+        if (transferModeGroup) transferModeGroup.style.display = showTransfer ? '' : 'none';
+
+        if (!showTransfer) {
+          const tetapRadio = document.querySelector('input[name="transferModeRek"][value="tetap"]');
+          if (tetapRadio) tetapRadio.checked = true;
+        }
+
+        _bindRekeningMetodeChange_();
+        updateRekeningTransferMode_();
+      }
+
+      function updateRekeningTransferMode_(){
+        const label = document.getElementById('txrMetodeTujuanLabel');
+        const select = document.getElementById('txrMetodeTujuan');
+
+        if (TX_JENIS_ !== 'tabungan') {
+          if (label) label.style.display = 'none';
+          if (select) {
+            select.style.display = 'none';
+            select.value = '';
+          }
+          return;
+        }
+
+        const transferMode = document.querySelector('input[name="transferModeRek"]:checked');
+        const mode = transferMode ? transferMode.value : 'tetap';
+
+        if (mode === 'pindah') {
+          if (label) label.style.display = '';
+          if (select) select.style.display = '';
+          updateMetodeDropdownTujuanRekening_();
+        } else {
+          if (label) label.style.display = 'none';
+          if (select) {
+            select.style.display = 'none';
+            select.value = '';
+          }
+        }
+      }
+
+      function updateMetodeDropdownTujuanRekening_(){
+        const sel = document.getElementById('txrMetodeTujuan');
+        if (!sel) { console.warn('[updateMetodeDropdownTujuanRekening_] #txrMetodeTujuan tidak ditemukan'); return; }
+
+        sel.innerHTML = '<option value="">-- Pilih Metode Tujuan --</option>';
+
+        if (!USER_ID_) { console.warn('[updateMetodeDropdownTujuanRekening_] USER_ID_ kosong'); return; }
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run.withSuccessHandler(function(metodeList){
+            if (!Array.isArray(metodeList)) return;
+
+            const metodeAsalRaw = document.getElementById('txrMetode') ? document.getElementById('txrMetode').value : '';
+            const metodeAsal = _normalizeMetodeCompare_(metodeAsalRaw);
+            let countAdded = 0;
+
+            metodeList.forEach(function(metode) {
+              const metodeNorm = String(metode || '').trim();
+              if (!metodeNorm) return;
+              const metodeLower = _normalizeMetodeCompare_(metodeNorm);
+              if (metodeLower !== 'cash' && metodeLower !== metodeAsal) {
+                const opt = document.createElement('option');
+                opt.value = metodeNorm;
+                opt.textContent = metodeNorm;
+                sel.appendChild(opt);
+                countAdded++;
+              }
+            });
+
+            if (countAdded === 0) {
+              const opt = document.createElement('option');
+              opt.value = '';
+              opt.textContent = '-- Tidak ada metode tujuan lain --';
+              opt.disabled = true;
+              sel.appendChild(opt);
+            }
+          }).getMetodeByUser(USER_ID_);
+        }
       }
 
       // UPDATED: mode tabungan (tambah/pakai)
@@ -1331,6 +2584,18 @@ function showDynamicPage(html) {
         document.getElementById('txtModeTambah').classList.toggle('active', TAB_MODE_ === 'tambah');
         document.getElementById('txtModePakai').classList.toggle('active', TAB_MODE_ === 'pakai');
 
+        const transferModeLabel = document.getElementById('transferModeLabel');
+        const transferModeGroup = document.getElementById('transferModeGroup');
+        const metodeTujuanLabel = document.getElementById('metodeTujuanLabel');
+        const metodeTujuanSelect = document.getElementById('txtMetodeTujuan');
+        if (transferModeLabel) transferModeLabel.style.display = 'none';
+        if (transferModeGroup) transferModeGroup.style.display = 'none';
+        if (metodeTujuanLabel) metodeTujuanLabel.style.display = 'none';
+        if (metodeTujuanSelect) {
+          metodeTujuanSelect.style.display = 'none';
+          metodeTujuanSelect.value = '';
+        }
+
         const note = document.getElementById('txtNote');
         if (TAB_MODE_ === 'pakai'){
           note.textContent = 'Mode pakai: untuk mengurangi saldo tabungan (penggunaan tabungan).';
@@ -1339,11 +2604,184 @@ function showDynamicPage(html) {
         }
       }
 
+      function updateTransferMode_(){
+        const metodeTujuanLabel = document.getElementById('metodeTujuanLabel');
+        const metodeTujuanSelect = document.getElementById('txtMetodeTujuan');
+
+        if (TAB_MODE_ !== 'pakai') {
+          if (metodeTujuanLabel) metodeTujuanLabel.style.display = 'none';
+          if (metodeTujuanSelect) {
+            metodeTujuanSelect.style.display = 'none';
+            metodeTujuanSelect.value = '';
+          }
+          return;
+        }
+
+        const transferMode = document.querySelector('input[name="transferMode"]:checked');
+        const mode = transferMode ? transferMode.value : 'tetap';
+        
+        if (mode === 'pindah') {
+          // Tampilkan dropdown metode tujuan
+          metodeTujuanLabel.style.display = '';
+          metodeTujuanSelect.style.display = '';
+          updateMetodeDropdownTujuan_();
+        } else {
+          // Sembunyikan dropdown metode tujuan
+          metodeTujuanLabel.style.display = 'none';
+          metodeTujuanSelect.style.display = 'none';
+        }
+      }
+
+      function updateMetodeDropdownTujuan_(){
+        const sel = document.getElementById('txtMetodeTujuan');
+        if (!sel) { console.warn('[updateMetodeDropdownTujuan_] #txtMetodeTujuan tidak ditemukan'); return; }
+        
+        // Kosongkan, tinggal placeholder
+        sel.innerHTML = '<option value="">-- Pilih Metode Tujuan --</option>';
+        
+        if (!USER_ID_) { console.warn('[updateMetodeDropdownTujuan_] USER_ID_ kosong'); return; }
+        
+        console.log('[updateMetodeDropdownTujuan_] USER_ID_:', USER_ID_);
+        
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run.withSuccessHandler(function(metodeList){
+            console.log('[updateMetodeDropdownTujuan_] metodeList:', metodeList);
+            if (Array.isArray(metodeList)) {
+              const metodeAsalRaw = document.getElementById('txtMetode') ? document.getElementById('txtMetode').value : '';
+              const metodeAsal = String(metodeAsalRaw || '').trim().toLowerCase();
+              metodeList.forEach(function(metode) {
+                // Jangan tampilkan "Cash" dan jangan tampilkan metode asal
+                const metodeNorm = String(metode || '').trim();
+                if (!metodeNorm) return;
+                const metodeLower = metodeNorm.toLowerCase();
+                if (metodeLower !== 'cash' && metodeLower !== metodeAsal) {
+                  const opt = document.createElement('option');
+                  opt.value = metodeNorm;
+                  opt.textContent = metodeNorm;
+                  sel.appendChild(opt);
+                }
+              });
+            } else {
+              console.warn('[updateMetodeDropdownTujuan_] metodeList bukan array');
+            }
+          }).getMetodeByUser(USER_ID_);
+        } else {
+          console.warn('[updateMetodeDropdownTujuan_] google.script.run tidak tersedia');
+        }
+      }
+
       function _parseNominal_(s){
         s = String(s || '').trim();
         if (!s) return 0;
         s = s.replace(/[^\d]/g, '');
         return Number(s || 0) || 0;
+      }
+
+      function _fmtRupiah_(n){
+        return 'Rp ' + (Number(n || 0) || 0).toLocaleString('id-ID');
+      }
+
+      function _showTopupConfirm_(res, payloadBase){
+        window.PENDING_TX_REKENING_ = Object.assign({}, payloadBase);
+        window.PENDING_TOPUP_RULES_ = {
+          min: Number(res.minimumAmbil || res.kekurangan || 0) || 0,
+          max: Number(res.maximumAmbil || res.saldoTabungan || 0) || 0,
+          kekurangan: Number(res.kekurangan || 0) || 0
+        };
+        document.getElementById('topupSaldoRekening').textContent = _fmtRupiah_(res.saldoRekening || 0);
+        document.getElementById('topupNominal').textContent = _fmtRupiah_(res.nominal || 0);
+        document.getElementById('topupKekurangan').textContent = _fmtRupiah_(res.kekurangan || 0);
+        document.getElementById('topupSaldoTabungan').textContent = _fmtRupiah_(res.saldoTabungan || 0);
+        const topupInput = document.getElementById('topupNominalInput');
+        if (topupInput) topupInput.value = (window.PENDING_TOPUP_RULES_.min || 0).toLocaleString('id-ID');
+        const hint = document.getElementById('topupHint');
+        if (hint) {
+          hint.textContent = 'Minimal ' + _fmtRupiah_(window.PENDING_TOPUP_RULES_.min) + ' • Maksimal ' + _fmtRupiah_(window.PENDING_TOPUP_RULES_.max);
+        }
+        toggleTopupConfirmModal_(true);
+      }
+
+      function _handleTxRekeningSaveResponse_(res, payloadBase){
+        if (res && res.ok) {
+          setBtnLoading('btnSaveTxR', false);
+          setBtnLoading('btnConfirmTopup', false);
+          toggleTopupConfirmModal_(false);
+          showModalToast('txRekToastContainer', res.message || 'Transaksi berhasil disimpan.', 'success');
+          setTimeout(() => {
+            toggleTxRekeningModal_(false);
+            resetFormTxRekening_();
+            reloadAll();
+          }, 250);
+          return;
+        }
+
+        if (res && res.needsTopupFromTabungan && res.canCoverFromTabungan) {
+          setBtnLoading('btnSaveTxR', false);
+          _showTopupConfirm_(res, payloadBase);
+          return;
+        }
+
+        setBtnLoading('btnSaveTxR', false);
+        setBtnLoading('btnConfirmTopup', false);
+        const msg = (res && res.message) || 'Gagal simpan transaksi.';
+        if (res && (res.code === 'SALDO_TIDAK_CUKUP' || res.code === 'SALDO_TABUNGAN_TIDAK_CUKUP' || res.code === 'NOMINAL_AMBIL_KURANG' || res.code === 'NOMINAL_AMBIL_INVALID')) {
+          showModalToast(
+            'txRekToastContainer',
+            msg + ' (Rekening: ' + _fmtRupiah_(res.saldoRekening || 0) + ', Tabungan: ' + _fmtRupiah_(res.saldoTabungan || 0) + ')',
+            'error'
+          );
+          return;
+        }
+        if (res && res.code === 'SALDO_METODE_TIDAK_CUKUP') {
+          showModalToast(
+            'txRekToastContainer',
+            (res.message || 'Saldo metode tidak cukup.') +
+              ' (Metode: ' + (res.metode || '-') +
+              ', Saldo: ' + _fmtRupiah_(res.saldoMetode || 0) +
+              ', Kekurangan: ' + _fmtRupiah_(res.kekurangan || 0) + ')',
+            'error'
+          );
+          return;
+        }
+        showModalToast('txRekToastContainer', msg, 'error');
+      }
+
+      function _submitTxRekening_(payloadBase){
+        google.script.run.withSuccessHandler(function(res){
+          _handleTxRekeningSaveResponse_(res, payloadBase);
+        }).withFailureHandler(function(err){
+          setBtnLoading('btnSaveTxR', false);
+          setBtnLoading('btnConfirmTopup', false);
+          showModalToast('txRekToastContainer', 'Terjadi error server: ' + (err && err.message ? err.message : err), 'error');
+        }).apiAddTxRekening(payloadBase);
+      }
+
+      function confirmTopupAndSave_(){
+        const payloadBase = window.PENDING_TX_REKENING_;
+        if (!payloadBase) {
+          toggleTopupConfirmModal_(false);
+          return;
+        }
+
+        const rules = window.PENDING_TOPUP_RULES_ || { min: 0, max: 0 };
+        const ambil = _parseNominal_(document.getElementById('topupNominalInput') ? document.getElementById('topupNominalInput').value : '');
+        if (!(ambil > 0)) {
+          return showModalToast('txRekToastContainer', 'Nominal pengambilan tabungan wajib diisi.', 'warning');
+        }
+        if (ambil < (Number(rules.min || 0) || 0)) {
+          return showModalToast('txRekToastContainer', 'Nominal pengambilan harus minimal sebesar kekurangan transaksi.', 'warning');
+        }
+        if (ambil > (Number(rules.max || 0) || 0)) {
+          return showModalToast('txRekToastContainer', 'Nominal pengambilan melebihi saldo tabungan.', 'warning');
+        }
+
+        setBtnLoading('btnConfirmTopup', true);
+        google.script.run.withSuccessHandler(function(res){
+          _handleTxRekeningSaveResponse_(res, Object.assign({}, payloadBase, { konfirmasiAmbilTabungan: true, jumlahAmbilTabungan: ambil }));
+        }).withFailureHandler(function(err){
+          setBtnLoading('btnConfirmTopup', false);
+          showModalToast('txRekToastContainer', 'Terjadi error server: ' + (err && err.message ? err.message : err), 'error');
+        }).apiAddTxRekening(Object.assign({}, payloadBase, { konfirmasiAmbilTabungan: true, jumlahAmbilTabungan: ambil }));
       }
 
       function formatMoneyInput_(input){
@@ -1360,66 +2798,105 @@ function showDynamicPage(html) {
         const tanggal = String(document.getElementById('txrTanggal').value || '').trim();
         const nominal = _parseNominal_(document.getElementById('txrNominal').value);
         const keterangan = String(document.getElementById('txrKet').value || '').trim();
+        const metode = document.getElementById('txrMetode') ? document.getElementById('txrMetode').value : '';
+        const transferModeRek = document.querySelector('input[name="transferModeRek"]:checked');
+        const tabunganMode = transferModeRek ? transferModeRek.value : 'tetap';
+        const metodeTujuan = document.getElementById('txrMetodeTujuan') ? document.getElementById('txrMetodeTujuan').value : '';
         const struckInput = document.getElementById('txrStruck');
-        const struckFile = struckInput && struckInput.files && struckInput.files[0] ? struckInput.files[0] : null;
+        const struckFiles = struckInput && struckInput.files ? Array.from(struckInput.files) : [];
 
         if (!tanggal) return showModalToast('txRekToastContainer', 'Tanggal wajib diisi.', 'warning');
         if (!(nominal > 0)) return showModalToast('txRekToastContainer', 'Nominal harus lebih dari 0.', 'warning');
+        if ((TX_JENIS_ === 'pengeluaran' || TX_JENIS_ === 'tabungan') && !metode) {
+          return showModalToast('txRekToastContainer', 'Metode wajib dipilih untuk transaksi pengeluaran/tabungan.', 'warning');
+        }
+
+        if (TX_JENIS_ === 'tabungan' && tabunganMode === 'pindah') {
+          const metodeLower = String(metode || '').trim().toLowerCase();
+          const metodeTujuanLower = String(metodeTujuan || '').trim().toLowerCase();
+          if (!metode) return showModalToast('txRekToastContainer', 'Pilih metode sumber untuk pindah.', 'warning');
+          if (metodeLower === 'cash') return showModalToast('txRekToastContainer', 'Mode pindah tidak boleh dari Cash.', 'warning');
+          if (!metodeTujuan) return showModalToast('txRekToastContainer', 'Pilih metode tujuan untuk pindah.', 'warning');
+          if (metodeTujuanLower === 'cash') return showModalToast('txRekToastContainer', 'Metode tujuan tidak boleh Cash.', 'warning');
+          if (metodeLower === metodeTujuanLower) return showModalToast('txRekToastContainer', 'Metode tujuan tidak boleh sama dengan metode sumber.', 'warning');
+        }
+
+        const payloadBase = { tanggal, jenis: TX_JENIS_, nominal, keterangan, metode };
+        if (TX_JENIS_ === 'tabungan') {
+          payloadBase.tabunganMode = tabunganMode;
+          if (tabunganMode === 'pindah') payloadBase.metodeTujuan = metodeTujuan;
+        }
 
         setBtnLoading('btnSaveTxR', true);
 
         // Jika ada struck file, upload dulu ke Drive
-        if (struckFile) {
+        if (struckFiles.length > 0) {
+          _uploadTxRekeningStruckFiles_(struckFiles, function(resUpload) {
+            console.log('[Struck Upload]', resUpload);
+            if (!resUpload || !resUpload.ok) {
+              setBtnLoading('btnSaveTxR', false);
+              showModalToast('txRekToastContainer', (resUpload && resUpload.message) || 'Gagal upload struck.', 'error');
+              return;
+            }
+            google.script.run.withSuccessHandler(res=>{
+              console.log('[Transaksi Simpan]', res);
+              _handleTxRekeningSaveResponse_(res, Object.assign({}, payloadBase, { struck: resUpload.url }));
+            }).apiAddTxRekening(Object.assign({}, payloadBase, { struck: resUpload.url }));
+          });
+        } else {
+          _submitTxRekening_(payloadBase);
+        }
+      }
+
+      function _readTxRekeningStruckFiles_(files, done) {
+        if (!Array.isArray(files) || files.length === 0) {
+          done({ ok: true, files: [] });
+          return;
+        }
+
+        const result = [];
+        let index = 0;
+
+        function next() {
+          if (index >= files.length) {
+            done({ ok: true, files: result });
+            return;
+          }
+
+          const file = files[index];
           const reader = new FileReader();
           reader.onload = function(e) {
-            const base64 = String(e.target.result || '').split(',')[1] || '';
-            google.script.run.withSuccessHandler(function(resUpload) {
-              // Log hasil upload struck ke console
-              console.log('[Struck Upload]', resUpload);
-              if (!resUpload.ok) {
-                setBtnLoading('btnSaveTxR', false);
-                showModalToast('txRekToastContainer', resUpload.message || 'Gagal upload struck.', 'error');
-                console.error('[Struck Upload ERROR]', resUpload.message || resUpload);
-                return; // Hentikan proses jika upload gagal
-              }
-              // Jika upload sukses, lanjut simpan transaksi
-              google.script.run.withSuccessHandler(res=>{
-                setBtnLoading('btnSaveTxR', false);
-                console.log('[Transaksi Simpan]', res);
-                if(res && res.ok){
-                  showModalToast('txRekToastContainer', res.message || 'Transaksi berhasil disimpan.', 'success');
-                  console.log('[Transaksi SUCCESS]', res.message || res);
-                  setTimeout(() => {
-                    toggleTxRekeningModal_(false);
-                    resetFormTxRekening_();
-                    reloadAll();
-                  }, 1500);
-                } else {
-                  showModalToast('txRekToastContainer', (res && res.message) || 'Gagal simpan transaksi.', 'error');
-                  console.error('[Transaksi ERROR]', (res && res.message) || res);
-                }
-              }).apiAddTxRekening({ tanggal, jenis: TX_JENIS_, nominal, keterangan, struck: resUpload.url });
-            }).apiUploadStruck({ filename: struckFile.name, mimeType: struckFile.type, base64 });
+            const base64 = String(e && e.target && e.target.result || '').split(',')[1] || '';
+            result.push({
+              filename: file.name,
+              mimeType: file.type || 'application/octet-stream',
+              base64: base64
+            });
+            index += 1;
+            next();
           };
-          reader.readAsDataURL(struckFile);
-        } else {
-          google.script.run.withSuccessHandler(res=>{
-            setBtnLoading('btnSaveTxR', false);
-            console.log('[Transaksi Simpan]', res);
-            if(res && res.ok){
-              showModalToast('txRekToastContainer', res.message || 'Transaksi berhasil disimpan.', 'success');
-              console.log('[Transaksi SUCCESS]', res.message || res);
-              setTimeout(() => {
-                toggleTxRekeningModal_(false);
-                resetFormTxRekening_();
-                reloadAll();
-              }, 1500);
-            } else {
-              showModalToast('txRekToastContainer', (res && res.message) || 'Gagal simpan transaksi.', 'error');
-              console.error('[Transaksi ERROR]', (res && res.message) || res);
-            }
-          }).apiAddTxRekening({ tanggal, jenis: TX_JENIS_, nominal, keterangan });
+          reader.onerror = function() {
+            done({ ok: false, message: 'Gagal membaca file: ' + (file && file.name ? file.name : '-') });
+          };
+          reader.readAsDataURL(file);
         }
+
+        next();
+      }
+
+      function _uploadTxRekeningStruckFiles_(files, done) {
+        _readTxRekeningStruckFiles_(files, function(readRes) {
+          if (!readRes || !readRes.ok) {
+            done(readRes || { ok: false, message: 'Gagal membaca file struck.' });
+            return;
+          }
+
+          google.script.run.withSuccessHandler(function(resUpload) {
+            done(resUpload || { ok: false, message: 'Upload struck gagal.' });
+          }).withFailureHandler(function(err) {
+            done({ ok: false, message: 'Gagal upload struck: ' + (err && err.message ? err.message : err) });
+          }).apiUploadStruck({ files: readRes.files });
+        });
       }
 
       function resetFormTxRekening_(){
@@ -1428,12 +2905,18 @@ function showDynamicPage(html) {
         document.getElementById('txrKet').value = '';
         if(document.getElementById('txrStruck')) document.getElementById('txrStruck').value = '';
         if(document.getElementById('txrStruckPreview')) document.getElementById('txrStruckPreview').innerHTML = '';
+        if(document.getElementById('struckUploadText')) document.getElementById('struckUploadText').textContent = 'Pilih file bukti (bisa lebih dari 1)...';
         // Set tanggal ke hari ini
         const now = new Date();
         const y = now.getFullYear();
         const m = String(now.getMonth() + 1).padStart(2, '0');
         const d = String(now.getDate()).padStart(2, '0');
         document.getElementById('txrTanggal').value = `${y}-${m}-${d}`;
+        const tetapRadio = document.querySelector('input[name="transferModeRek"][value="tetap"]');
+        if (tetapRadio) tetapRadio.checked = true;
+        const tujuan = document.getElementById('txrMetodeTujuan');
+        if (tujuan) tujuan.value = '';
+        updateRekeningTransferMode_();
         // Clear toast
         clearModalToast('txRekToastContainer');
             // Preview struck file
@@ -1443,21 +2926,16 @@ function showDynamicPage(html) {
                 struckInput.addEventListener('change', function() {
                   const previewDiv = document.getElementById('txrStruckPreview');
                   previewDiv.innerHTML = '';
-                  const file = struckInput.files && struckInput.files[0] ? struckInput.files[0] : null;
-                  if (!file) return;
-                  const ext = file.name.split('.').pop().toLowerCase();
-                  const reader = new FileReader();
-                  reader.onload = function(e) {
-                    if (file.type.startsWith('image/')) {
-                      previewDiv.innerHTML = `<img src="${e.target.result}" style="max-width:120px;max-height:120px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-top:4px;">`;
-                    } else if (file.type === 'application/pdf') {
-                      previewDiv.innerHTML = `<span style="color:var(--primary);font-weight:bold;">PDF dipilih: ${file.name}</span>`;
-                    } else {
-                      previewDiv.innerHTML = `<span style="color:var(--warn);">File dipilih: ${file.name}</span>`;
-                    }
-                  };
-                  if (file.type.startsWith('image/')) reader.readAsDataURL(file);
-                  else reader.readAsArrayBuffer(file);
+                  const files = struckInput.files ? Array.from(struckInput.files) : [];
+                  if (!files.length) return;
+
+                  const namesHtml = files.map(function(f){
+                    return '<li style="margin-bottom:2px;">' + (f && f.name ? f.name : '-') + '</li>';
+                  }).join('');
+
+                  previewDiv.innerHTML =
+                    '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">' + files.length + ' file dipilih (akan digabung jadi 1 file saat upload):</div>' +
+                    '<ul style="margin:0;padding-left:18px;max-height:92px;overflow:auto;">' + namesHtml + '</ul>';
                 });
               }
             });
@@ -1476,21 +2954,39 @@ function showDynamicPage(html) {
         setBtnLoading('btnSaveTxT', true);
 
         if (TAB_MODE_ === 'pakai'){
+          const metode = document.getElementById('txtMetode') ? document.getElementById('txtMetode').value : '';
+          if (!metode) return showModalToast('txTabToastContainer', 'Metode wajib dipilih untuk transaksi tabungan.', 'warning');
+
           google.script.run.withSuccessHandler(res=>{
             setBtnLoading('btnSaveTxT', false);
-
             if(res && res.ok){
               showModalToast('txTabToastContainer', res.message || 'Transaksi tabungan berhasil disimpan.', 'success');
               setTimeout(() => {
                 toggleTabunganModal_(false);
                 resetFormTabungan_();
                 reloadAll();
-              }, 1500);
+              }, 250);
             } else {
-              showModalToast('txTabToastContainer', (res && res.message) || 'Gagal simpan pakai tabungan.', 'error');
+              if (res && res.code === 'SALDO_METODE_TIDAK_CUKUP') {
+                showModalToast(
+                  'txTabToastContainer',
+                  (res.message || 'Saldo metode tidak cukup.') +
+                    ' (Metode: ' + (res.metode || '-') +
+                    ', Saldo: ' + _fmtRupiah_(res.saldoMetode || 0) +
+                    ', Kekurangan: ' + _fmtRupiah_(res.kekurangan || 0) + ')',
+                  'error'
+                );
+              } else if (res && res.code === 'SALDO_TABUNGAN_TIDAK_CUKUP') {
+                showModalToast(
+                  'txTabToastContainer',
+                  (res.message || 'Saldo tabungan tidak cukup.') + ' (Saldo: ' + _fmtRupiah_(res.saldo_tabungan || 0) + ', Kekurangan: ' + _fmtRupiah_(res.kekurangan || 0) + ')',
+                  'error'
+                );
+              } else {
+                showModalToast('txTabToastContainer', (res && res.message) || 'Gagal simpan pakai tabungan.', 'error');
+              }
             }
-          }).apiAddPakaiTabungan({ tanggal_pakai_tabungan: tanggal, keperluan: keperluan, jumlah_pakai_tabungan: nominal });
-
+          }).apiAddPakaiTabungan({ tanggal_pakai_tabungan: tanggal, keperluan: keperluan, jumlah_pakai_tabungan: nominal, metode });
           return;
         }
 
@@ -1504,7 +3000,7 @@ function showDynamicPage(html) {
               toggleTabunganModal_(false);
               resetFormTabungan_();
               reloadAll();
-            }, 1500);
+            }, 250);
           } else {
             showModalToast('txTabToastContainer', (res && res.message) || 'Gagal simpan tambah tabungan.', 'error');
           }
@@ -1567,41 +3063,29 @@ function showDynamicPage(html) {
       }
 
       function _fmtRangeInfo_(startIsoOrYmd, endIso){
-        function savePassword_(){
-          setBtnLoading('btnSavePassword', true);
-          const oldPass = document.getElementById('pfOldPass') ? document.getElementById('pfOldPass').value : '';
-          const newPass = document.getElementById('pfNewPass') ? document.getElementById('pfNewPass').value : '';
-          const newPass2 = document.getElementById('pfNewPass2') ? document.getElementById('pfNewPass2').value : '';
-          if (!oldPass || !newPass || !newPass2) {
-            setBtnLoading('btnSavePassword', false);
-            showModalToast('profileToastContainer', 'Semua field password wajib diisi.', 'warning');
-            return;
-          }
-          if (newPass.length < 4) {
-            setBtnLoading('btnSavePassword', false);
-            showModalToast('profileToastContainer', 'Password baru minimal 4 karakter.', 'warning');
-            return;
-          }
-          if (newPass !== newPass2) {
-            setBtnLoading('btnSavePassword', false);
-            showModalToast('profileToastContainer', 'Konfirmasi password tidak sama.', 'warning');
-            return;
-          }
-          const payload = { oldPassword: oldPass, newPassword: newPass, newPassword2: newPass2 };
-          google.script.run.withSuccessHandler(res=>{
-            setBtnLoading('btnSavePassword', false);
-            if(res && res.ok){
-              showModalToast('profileToastContainer', res.message || 'Password berhasil diubah.', 'success');
-            } else {
-              showModalToast('profileToastContainer', (res && res.message) || 'Gagal ubah password.', 'error');
-            }
-          })
-          .withFailureHandler(err => {
-            setBtnLoading('btnSavePassword', false);
-            showModalToast('profileToastContainer', 'Terjadi error server: ' + (err && err.message ? err.message : err), 'error');
-          })
-          .apiProfileChangePassword(payload);
+        if (!startIsoOrYmd || !endIso) return '';
+
+        function toDisplayDate_(isoOrYmd){
+          const raw = String(isoOrYmd || '').trim();
+          if (!raw) return '';
+          const ymd = raw.slice(0, 10);
+          const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+          if (!m) return raw;
+          return `${m[3]}/${m[2]}/${m[1]}`;
         }
+
+        const startTxt = toDisplayDate_(startIsoOrYmd);
+        const endTxt = toDisplayDate_(endIso);
+        return (startTxt && endTxt) ? `Periode: ${startTxt} → ${endTxt}` : '';
+      }
+
+      function _setRangeInfo_(text){
+        const el = document.getElementById('rangeInfo');
+        if (!el) return;
+
+        const msg = String(text || '').trim();
+        el.textContent = msg;
+        el.style.display = msg ? '' : 'none';
       }
 
       function onRangeChange_(){
@@ -1628,6 +3112,20 @@ function showDynamicPage(html) {
         } else {
           _setRangeInfo_('');
         }
+      }
+
+      function clearCustomRange_(){
+        const startEl = document.getElementById('dateStart');
+        const endEl = document.getElementById('dateEnd');
+        if (startEl) startEl.value = '';
+        if (endEl) endEl.value = '';
+
+        RANGE_STATE_.customStart = '';
+        RANGE_STATE_.customEnd = '';
+        _setRangeInfo_('');
+
+        // Saat custom dikosongkan, fallback ke preset aktif agar data & grafik tetap sinkron.
+        reloadAll();
       }
 
       function _getRangeKeyForApi_(){
@@ -1790,6 +3288,65 @@ function showDynamicPage(html) {
         currentPage: 1,
         itemsPerPage: 15
       };
+      let TABLE_DEFAULT_DATE_INIT_ = false;
+
+      function _toYmd_(dateObj){
+        return `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')}`;
+      }
+
+      function _subtractMonthsClampedClient_(baseDate, monthsBack){
+        const source = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+        const targetMonthStart = new Date(source.getFullYear(), source.getMonth() - Number(monthsBack || 0), 1);
+        const lastDayOfTargetMonth = new Date(targetMonthStart.getFullYear(), targetMonthStart.getMonth() + 1, 0).getDate();
+        const safeDay = Math.min(source.getDate(), lastDayOfTargetMonth);
+        return new Date(targetMonthStart.getFullYear(), targetMonthStart.getMonth(), safeDay);
+      }
+
+      function _resolveMainRangeForTable_(){
+        const now = new Date();
+
+        if (RANGE_STATE_.mode === 'custom' && RANGE_STATE_.customStart && RANGE_STATE_.customEnd) {
+          const start = String(RANGE_STATE_.customStart || '').trim();
+          const end = String(RANGE_STATE_.customEnd || '').trim();
+          if (start && end && start <= end) return { start, end };
+          return { start: '', end: '' };
+        }
+
+        const key = String((document.getElementById('rangeSelect') && document.getElementById('rangeSelect').value) || RANGE_STATE_.presetKey || '3m').trim().toLowerCase();
+        if (key === 'all') return { start: '', end: '' };
+
+        const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        let startDate = null;
+        if (key === '1m') startDate = _subtractMonthsClampedClient_(endDate, 1);
+        else if (key === '3m') startDate = _subtractMonthsClampedClient_(endDate, 3);
+        else if (key === '12m') startDate = _subtractMonthsClampedClient_(endDate, 12);
+        else startDate = _subtractMonthsClampedClient_(endDate, 3);
+
+        return { start: _toYmd_(startDate), end: _toYmd_(endDate) };
+      }
+
+      function syncTableDateFilterWithMainRange_(){
+        const dateStartEl = document.getElementById('tableDateStartFilter');
+        const dateEndEl = document.getElementById('tableDateEndFilter');
+        if (!dateStartEl || !dateEndEl) return;
+
+        const r = _resolveMainRangeForTable_();
+        dateStartEl.value = String(r.start || '');
+        dateEndEl.value = String(r.end || '');
+      }
+
+      function _parseYmdToEpochDay_(value){
+        const raw = String(value || '').trim();
+        const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return NaN;
+        const y = Number(m[1]);
+        const mo = Number(m[2]);
+        const d = Number(m[3]);
+        if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return NaN;
+        const dt = new Date(y, mo - 1, d);
+        if (dt.getFullYear() !== y || dt.getMonth() !== (mo - 1) || dt.getDate() !== d) return NaN;
+        return dt.getTime();
+      }
 
       function switchTable_(type){
         TABLE_DATA_.currentTable = type;
@@ -1802,7 +3359,8 @@ function showDynamicPage(html) {
         document.getElementById('tableTabungan').style.display = (type === 'tabungan') ? 'block' : 'none';
         
         // Clear filters when switching tables
-        document.getElementById('tableDateFilter').value = '';
+        document.getElementById('tableDateStartFilter').value = '';
+        document.getElementById('tableDateEndFilter').value = '';
         document.getElementById('tableSearch').value = '';
         
         // Update filter options based on table type
@@ -1833,10 +3391,18 @@ function showDynamicPage(html) {
       }
 
       function loadTableData_(){
-        // Reset filter inputs
-        document.getElementById('tableDateFilter').value = '';
-        document.getElementById('tableTypeFilter').selectedIndex = 0;
-        document.getElementById('tableSearch').value = '';
+        const dateStartEl = document.getElementById('tableDateStartFilter');
+        const dateEndEl = document.getElementById('tableDateEndFilter');
+        const typeEl = document.getElementById('tableTypeFilter');
+        const searchEl = document.getElementById('tableSearch');
+
+        // Default awal + sinkronisasi dengan filter utama (Data/Grafik)
+        if (!TABLE_DEFAULT_DATE_INIT_) {
+          if (typeEl) typeEl.selectedIndex = 0;
+          if (searchEl) searchEl.value = '';
+          TABLE_DEFAULT_DATE_INIT_ = true;
+        }
+        syncTableDateFilterWithMainRange_();
         
         updateTypeFilter_();
         
@@ -1854,25 +3420,29 @@ function showDynamicPage(html) {
           TABLE_DATA_.tabungan = res.tabungan || [];
           TABLE_DATA_.filteredRekening = TABLE_DATA_.rekening.slice();
           TABLE_DATA_.filteredTabungan = TABLE_DATA_.tabungan.slice();
-          
-          // Render directly without filter on initial load
-          TABLE_DATA_.currentPage = 1;
-          renderTable_();
+
+          // Terapkan filter aktif (default awal: 1 tahun)
+          filterTable_();
         }).apiGetTableData();
       }
 
       function filterTable_(){
-        const dateFilter = document.getElementById('tableDateFilter').value.trim();
+        const dateStartFilter = document.getElementById('tableDateStartFilter').value.trim();
+        const dateEndFilter = document.getElementById('tableDateEndFilter').value.trim();
         const typeFilter = document.getElementById('tableTypeFilter').value;
         const searchQuery = document.getElementById('tableSearch').value.toLowerCase().trim();
+        const normalizedStart = (dateStartFilter && dateEndFilter && dateStartFilter > dateEndFilter) ? dateEndFilter : dateStartFilter;
+        const normalizedEnd = (dateStartFilter && dateEndFilter && dateStartFilter > dateEndFilter) ? dateStartFilter : dateEndFilter;
+        const normalizedStartEpoch = normalizedStart ? _parseYmdToEpochDay_(normalizedStart) : NaN;
+        const normalizedEndEpoch = normalizedEnd ? _parseYmdToEpochDay_(normalizedEnd) : NaN;
         
         if (TABLE_DATA_.currentTable === 'rekening') {
           TABLE_DATA_.filteredRekening = TABLE_DATA_.rekening.filter(row => {
-            // Date filter - normalize both formats to YYYY-MM-DD
-            if (dateFilter) {
-              const rowDate = row.tanggal || ''; // Format: YYYY-MM-DD from backend
-              if (rowDate !== dateFilter) return false;
-            }
+            // Date range filter
+            const rowDate = row.tanggal || ''; // Format: YYYY-MM-DD from backend
+            const rowDateEpoch = _parseYmdToEpochDay_(rowDate);
+            if (normalizedStart && (!Number.isFinite(rowDateEpoch) || rowDateEpoch < normalizedStartEpoch)) return false;
+            if (normalizedEnd && (!Number.isFinite(rowDateEpoch) || rowDateEpoch > normalizedEndEpoch)) return false;
             
             // Type filter
             if (typeFilter && row.keperluan.toLowerCase() !== typeFilter) return false;
@@ -1887,11 +3457,11 @@ function showDynamicPage(html) {
           });
         } else {
           TABLE_DATA_.filteredTabungan = TABLE_DATA_.tabungan.filter(row => {
-            // Date filter - normalize both formats to YYYY-MM-DD
-            if (dateFilter) {
-              const rowDate = row.tanggal || ''; // Format: YYYY-MM-DD from backend
-              if (rowDate !== dateFilter) return false;
-            }
+            // Date range filter
+            const rowDate = row.tanggal || ''; // Format: YYYY-MM-DD from backend
+            const rowDateEpoch = _parseYmdToEpochDay_(rowDate);
+            if (normalizedStart && (!Number.isFinite(rowDateEpoch) || rowDateEpoch < normalizedStartEpoch)) return false;
+            if (normalizedEnd && (!Number.isFinite(rowDateEpoch) || rowDateEpoch > normalizedEndEpoch)) return false;
             
             // Type filter (masuk/keluar based on nominal sign)
             if (typeFilter) {
@@ -1918,6 +3488,12 @@ function showDynamicPage(html) {
         const isRekening = TABLE_DATA_.currentTable === 'rekening';
         const data = isRekening ? TABLE_DATA_.filteredRekening : TABLE_DATA_.filteredTabungan;
         const tbody = document.getElementById(isRekening ? 'tableRekeningBody' : 'tableTabunganBody');
+
+        function renderStruckCell_(url){
+          const cleanUrl = String(url || '').trim();
+          if (!cleanUrl) return '-';
+          return `<a href="${escapeHtml_(cleanUrl)}" target="_blank" rel="noopener noreferrer">Buka</a>`;
+        }
         
         console.log('📊 Rendering table:', isRekening ? 'Rekening' : 'Tabungan');
         console.log('- Total filtered data:', data.length);
@@ -1934,7 +3510,7 @@ function showDynamicPage(html) {
         
         // Render table rows
         if (pageData.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="${isRekening ? 5 : 4}" class="table-empty">Tidak ada data</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="${isRekening ? 6 : 5}" class="table-empty">Tidak ada data</td></tr>`;
         } else {
           tbody.innerHTML = pageData.map(row => {
             if (isRekening) {
@@ -1961,6 +3537,7 @@ function showDynamicPage(html) {
                   <td><span class="td-keperluan ${keperluanClass}">${row.keperluan.toUpperCase()}</span></td>
                   <td class="td-nominal ${nominalClass}">${nominalSign}${fmtNum(Math.abs(row.nominal))}</td>
                   <td class="td-keterangan" title="${row.keterangan || '-'}">${row.keterangan || '-'}</td>
+                  <td>${renderStruckCell_(row.struck)}</td>
                 </tr>
               `;
             } else {
@@ -1975,6 +3552,7 @@ function showDynamicPage(html) {
                   <td class="td-date">${formatDate_(row.tanggal)}</td>
                   <td class="td-nominal ${nominalClass}">${nominalSign}${fmtNum(Math.abs(row.nominal))}</td>
                   <td class="td-keterangan" title="${row.keterangan || '-'}">${row.keterangan || '-'}</td>
+                  <td>${renderStruckCell_(row.struck)}</td>
                 </tr>
               `;
             }
@@ -1987,7 +3565,8 @@ function showDynamicPage(html) {
         document.getElementById('btnNextPage').disabled = TABLE_DATA_.currentPage === totalPages;
         
         // Update summary
-        document.getElementById('tableSummary').textContent = `Menampilkan ${startIdx + 1}-${endIdx} dari ${totalItems} data`;
+        const summaryStart = totalItems > 0 ? (startIdx + 1) : 0;
+        document.getElementById('tableSummary').textContent = `Menampilkan ${summaryStart}-${endIdx} dari ${totalItems} data`;
       }
 
       function formatDate_(dateStr){
@@ -2023,18 +3602,356 @@ function showDynamicPage(html) {
       }
 
       function clearTableFilter_(){
-        document.getElementById('tableDateFilter').value = '';
+        document.getElementById('tableDateStartFilter').value = '';
+        document.getElementById('tableDateEndFilter').value = '';
         document.getElementById('tableTypeFilter').selectedIndex = 0;
         document.getElementById('tableSearch').value = '';
         filterTable_();
       }
 
+      function toggleExportModal_(force){
+        const el = document.getElementById('exportModal');
+        if (!el) return;
+        const isOpen = el.style.display !== 'none';
+        const next = (typeof force === 'boolean') ? force : !isOpen;
+
+        el.style.display = next ? 'block' : 'none';
+        el.setAttribute('aria-hidden', next ? 'false' : 'true');
+        document.body.style.overflow = (next || isProfileOpen_() || isAnyTxModalOpen_() || (document.getElementById('menuModal').style.display !== 'none')) ? 'hidden' : '';
+
+        if (next) {
+          document.getElementById('exportTableType').value = TABLE_DATA_.currentTable;
+          document.getElementById('exportFileType').value = 'pdf';
+          document.getElementById('exportDateStart').value = '';
+          document.getElementById('exportDateEnd').value = '';
+        }
+      }
+
+      function _getRowsByTableType_(tableType){
+        const data = tableType === 'rekening' ? TABLE_DATA_.rekening : TABLE_DATA_.tabungan;
+        return Array.isArray(data) ? data.slice() : [];
+      }
+
+      function _buildExportPayload_(tableType, rows, rangeStart, rangeEnd){
+        const isRekening = tableType === 'rekening';
+
+        const headers = isRekening
+          ? ['ID Transaksi', 'Tanggal', 'Keperluan', 'Nominal', 'Keterangan', 'Struck']
+          : ['ID Transaksi', 'Tanggal', 'Nominal', 'Keterangan', 'Struck'];
+
+        const body = rows.map(row => {
+          const nominal = Number(row.nominal || 0);
+          const nominalText = (nominal < 0 ? '-' : '+') + fmtNum(Math.abs(nominal));
+          if (isRekening) {
+            return [
+              row.idTransaksi || '-',
+              formatDate_(row.tanggal),
+              row.keperluan || '-',
+              nominalText,
+              row.keterangan || '-',
+              row.struck || '-'
+            ];
+          }
+          return [
+            row.idTransaksi || '-',
+            formatDate_(row.tanggal),
+            nominalText,
+            row.keterangan || '-',
+            row.struck || '-'
+          ];
+        });
+
+        return {
+          isRekening,
+          rows,
+          headers,
+          body,
+          title: isRekening ? 'Laporan Tabel Rekening' : 'Laporan Tabel Tabungan',
+          scopeText: `${formatDate_(rangeStart)} - ${formatDate_(rangeEnd)}`,
+          rangeStart,
+          rangeEnd
+        };
+      }
+
+      async function _getPdfLogoDataUrl_(){
+        const logoEl = document.getElementById('brandLogo');
+        if (!logoEl) return '';
+        const src = String(logoEl.getAttribute('src') || '').trim();
+        if (!src) return '';
+
+        if (src.startsWith('data:image/')) return src;
+
+        try {
+          const parsed = new URL(src, window.location.href);
+          const isSameOrigin = parsed.origin === window.location.origin;
+          if (!isSameOrigin) return '';
+        } catch (e) {
+          return '';
+        }
+
+        try {
+          const res = await fetch(src, { mode: 'cors' });
+          if (!res.ok) return '';
+          const blob = await res.blob();
+          return await new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ''));
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(blob);
+          });
+        } catch (err) {
+          return '';
+        }
+      }
+
+      function _drawPdfLogoFallback_(doc, x, y, w, h){
+        doc.setFillColor(238, 245, 252);
+        doc.setDrawColor(189, 206, 227);
+        doc.roundedRect(x, y, w, h, 6, 6, 'FD');
+        doc.setTextColor(28, 53, 74);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.text('FA V2', x + w / 2, y + h / 2 + 3, { align: 'center' });
+      }
+
+      async function _downloadTableAsPdf_(payload){
+        const jsPdf = window.jspdf;
+        if (!jsPdf || !jsPdf.jsPDF) {
+          showToast('Library PDF belum siap. Coba lagi.', 'warning');
+          return;
+        }
+
+        const doc = new jsPdf.jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+        const now = new Date();
+        const fileStamp = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+        const pdfHeaders = payload.headers.filter(h => h !== 'Struck');
+        const pdfBody = payload.body.map(row => row.slice(0, -1));
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const leftX = 42;
+        const rightX = pageWidth - 42;
+        const jenisText = payload.isRekening ? 'Rekening' : 'Tabungan';
+        const userName = String(CURRENT_USER_NAME_ || (document.getElementById('navName') ? document.getElementById('navName').textContent : '') || '-').trim() || '-';
+        const userId = String(USER_ID_ || '-').trim() || '-';
+        const userIdentText = `${userName} (${userId})`;
+        const unameSeed = String(CURRENT_USERNAME_ || userName || 'user').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const unameToken = unameSeed || 'user';
+        const reportTimestamp = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+        const reportId = `report_${unameToken}_${reportTimestamp}`;
+        const logoW = 64;
+        const logoH = 30;
+        const logoX = rightX - logoW;
+        const logoY = 24;
+
+        const logoDataUrl = await _getPdfLogoDataUrl_();
+        if (logoDataUrl) {
+          try {
+            const fmt = logoDataUrl.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+            doc.addImage(logoDataUrl, fmt, logoX, logoY, logoW, logoH);
+          } catch (e) {
+            _drawPdfLogoFallback_(doc, logoX, logoY, logoW, logoH);
+          }
+        } else {
+          _drawPdfLogoFallback_(doc, logoX, logoY, logoW, logoH);
+        }
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text('HISTORI TRANSAKSI', pageWidth / 2, 44, { align: 'center' });
+
+        doc.setDrawColor(220, 226, 236);
+        doc.setLineWidth(0.8);
+        doc.line(leftX, 56, rightX, 56);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10.5);
+        doc.text('Kriteria Pencarian', leftX, 78);
+
+        const labelX = leftX;
+        const valueX = leftX + 116;
+        let rowY = 96;
+        const rowGap = 18;
+
+        function drawCriteriaRow_(label, value){
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(10);
+          doc.text(`${label}`, labelX, rowY);
+          doc.text(':', labelX + 92, rowY);
+          doc.setFont('helvetica', 'bold');
+          doc.text(String(value || '-'), valueX, rowY);
+          rowY += rowGap;
+        }
+
+        drawCriteriaRow_('Jenis', jenisText);
+        drawCriteriaRow_('Nama (ID)', userIdentText);
+        drawCriteriaRow_('Tanggal Awal', formatDate_(payload.rangeStart));
+        drawCriteriaRow_('Tanggal Akhir', formatDate_(payload.rangeEnd));
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(`Transactions List - ${jenisText} - (IDR)`, leftX, rowY + 10);
+        doc.text(`Dicetak: ${now.toLocaleString('id-ID')}`, rightX, rowY + 10, { align: 'right' });
+
+        doc.autoTable({
+          startY: rowY + 24,
+          head: [pdfHeaders],
+          body: pdfBody,
+          theme: 'grid',
+          styles: {
+            font: 'helvetica',
+            fontSize: 9.5,
+            textColor: [38, 45, 58],
+            lineColor: [228, 233, 240],
+            lineWidth: 0.5,
+            cellPadding: { top: 6, right: 7, bottom: 6, left: 7 },
+            valign: 'middle'
+          },
+          headStyles: {
+            fillColor: [243, 246, 251],
+            textColor: [28, 39, 54],
+            fontStyle: 'bold',
+            lineColor: [214, 222, 234]
+          },
+          alternateRowStyles: { fillColor: [251, 253, 255] },
+          columnStyles: {
+            0: { cellWidth: 84 },
+            1: { cellWidth: 78 },
+            2: { cellWidth: 100 },
+            3: { halign: 'right', cellWidth: 84 },
+            4: { cellWidth: 'auto' }
+          },
+          margin: { left: 42, right: 42, bottom: 40 },
+          didDrawPage: function(data){
+            const pageCurrent = doc.internal.getNumberOfPages();
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(108, 117, 130);
+            doc.text(`Report ID: ${reportId}`, leftX, pageHeight - 16);
+            doc.text('Created by Financial Applications V2', pageWidth / 2, pageHeight - 16, { align: 'center' });
+            doc.text(`Halaman ${pageCurrent}`, rightX, pageHeight - 16, { align: 'right' });
+          }
+        });
+
+        const safeStart = String(payload.rangeStart || '').replace(/[^0-9]/g, '');
+        const safeEnd = String(payload.rangeEnd || '').replace(/[^0-9]/g, '');
+        const fileName = `${payload.isRekening ? 'rekening' : 'tabungan'}_${safeStart}_${safeEnd}_${fileStamp}.pdf`;
+        doc.save(fileName);
+      }
+
+      function _downloadTableAsExcel_(payload){
+        const now = new Date();
+        const fileStamp = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+
+        const title = `${payload.title} (${payload.scopeText})`;
+        const headHtml = payload.headers.map(h => `<th>${escapeHtml_(h)}</th>`).join('');
+        const rowsHtml = payload.body.map(row => `<tr>${row.map(c => `<td>${escapeHtml_(String(c || '-'))}</td>`).join('')}</tr>`).join('');
+
+        const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body{font-family:Arial,sans-serif;padding:16px;color:#1f2937;}
+      h1{font-size:18px;margin:0 0 6px 0;}
+      .meta{font-size:12px;color:#4b5563;margin-bottom:12px;}
+      table{border-collapse:collapse;width:100%;font-size:12px;}
+      th,td{border:1px solid #d1d5db;padding:8px 10px;text-align:left;}
+      th{background:#e5eef8;font-weight:700;}
+      td:nth-child(4){text-align:right;}
+      tr:nth-child(even){background:#f9fafb;}
+    </style>
+  </head>
+  <body>
+    <h1>${escapeHtml_(title)}</h1>
+    <div class="meta">Dicetak: ${escapeHtml_(now.toLocaleString('id-ID'))}</div>
+    <table>
+      <thead><tr>${headHtml}</tr></thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+  </body>
+</html>`;
+
+        const blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const safeStart = String(payload.rangeStart || '').replace(/[^0-9]/g, '');
+        const safeEnd = String(payload.rangeEnd || '').replace(/[^0-9]/g, '');
+        a.download = `${payload.isRekening ? 'rekening' : 'tabungan'}_${safeStart}_${safeEnd}_${fileStamp}.xls`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      async function exportCurrentTableFromModal_(){
+        const tableType = document.getElementById('exportTableType').value;
+        const format = document.getElementById('exportFileType').value;
+        const start = String(document.getElementById('exportDateStart').value || '').trim();
+        const end = String(document.getElementById('exportDateEnd').value || '').trim();
+
+        let rangeStart = start;
+        let rangeEnd = end;
+        const now = new Date();
+        const toYmd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+        if (!rangeStart && !rangeEnd) {
+          const oneYearAgo = new Date(now);
+          oneYearAgo.setFullYear(now.getFullYear() - 1);
+          rangeStart = toYmd(oneYearAgo);
+          rangeEnd = toYmd(now);
+        } else if (!rangeStart || !rangeEnd) {
+          showToast('Isi kedua tanggal atau kosongkan keduanya.', 'warning');
+          return;
+        }
+
+        if (rangeStart > rangeEnd) {
+          showToast('Tanggal mulai tidak boleh lebih besar dari tanggal akhir.', 'warning');
+          return;
+        }
+
+        const diffMs = Math.abs(new Date(rangeEnd) - new Date(rangeStart));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        if (diffDays > 366) {
+          showToast('Rentang unduh maksimal 1 tahun.', 'warning');
+          return;
+        }
+
+        const rows = _getRowsByTableType_(tableType).filter(row => {
+          const rowDate = String(row.tanggal || '');
+          if (!rowDate) return false;
+          return rowDate >= rangeStart && rowDate <= rangeEnd;
+        });
+
+        const payload = _buildExportPayload_(tableType, rows, rangeStart, rangeEnd);
+        if (!payload.rows.length) {
+          showToast('Tidak ada data untuk diunduh.', 'warning');
+          return;
+        }
+
+        toggleExportModal_(false);
+
+        if (format === 'pdf') {
+          await _downloadTableAsPdf_(payload);
+          return;
+        }
+        _downloadTableAsExcel_(payload);
+      }
+
       // Add event listeners for filter inputs
       document.addEventListener('DOMContentLoaded', ()=>{
-        const tableDateFilter = document.getElementById('tableDateFilter');
+        loadDashboardCentralConfig_();
+        const tableDateStartFilter = document.getElementById('tableDateStartFilter');
+        const tableDateEndFilter = document.getElementById('tableDateEndFilter');
         const tableTypeFilter = document.getElementById('tableTypeFilter');
+        const exportModal = document.getElementById('exportModal');
+
+        if (exportModal && exportModal.parentElement !== document.body) {
+          document.body.appendChild(exportModal);
+        }
         
-        if (tableDateFilter) tableDateFilter.addEventListener('change', filterTable_);
+        if (tableDateStartFilter) tableDateStartFilter.addEventListener('change', filterTable_);
+        if (tableDateEndFilter) tableDateEndFilter.addEventListener('change', filterTable_);
         if (tableTypeFilter) tableTypeFilter.addEventListener('change', filterTable_);
       });
 
@@ -2046,6 +3963,7 @@ function showDynamicPage(html) {
 
             document.getElementById('vTotalUang').textContent = fmtNum(res.total_uang);
             document.getElementById('vTotalTabungan').textContent = fmtNum(res.total_tabungan);
+            document.getElementById('vSaldoRekeningTotal').textContent = fmtNum(res.saldo_rekening_total || 0);
 
             document.getElementById('dPemasukan').textContent = fmtNum(res.pemasukan);
             document.getElementById('dPengeluaran').textContent = fmtNum(res.pengeluaran);
@@ -2068,6 +3986,7 @@ function showDynamicPage(html) {
 
             document.getElementById('vTotalUang').textContent = fmtNum(res.total_uang);
             document.getElementById('vTotalTabungan').textContent = fmtNum(res.total_tabungan);
+            document.getElementById('vSaldoRekeningTotal').textContent = fmtNum(res.saldo_rekening_total || 0);
 
             document.getElementById('dPemasukan').textContent = fmtNum(res.pemasukan);
             document.getElementById('dPengeluaran').textContent = fmtNum(res.pengeluaran);
@@ -2126,8 +4045,9 @@ function showDynamicPage(html) {
 
       function logout(){
         // Clear session token from storage
-        localStorage.removeItem('sessionToken');
-        sessionStorage.removeItem('sessionToken');
+        const key = DASH_CLIENT_CFG.sessionTokenKey || 'sessionToken';
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
         
         setBtnLoading('btnLogout', true);
         google.script.run.withSuccessHandler(()=>hardRedirectHome_()).apiLogout();
@@ -2289,5 +4209,4 @@ function showDynamicPage(html) {
     <div id="toastContainer" class="toast-container"></div>
 
   </body>
-
 </html>
