@@ -593,6 +593,24 @@
       }
 
       // ===== login/reset =====
+      const CLIENT_CFG = {
+        sessionTokenKey: 'sessionToken',
+        sessionShortHours: 2,
+        sessionLongDays: 7
+      };
+
+      function loadCentralConfigClient_(){
+        if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+        google.script.run.withSuccessHandler(function(res){
+          const cfg = res && res.ok && res.config ? res.config : null;
+          if (!cfg) return;
+          const auth = cfg.AUTH || {};
+          CLIENT_CFG.sessionTokenKey = String(auth.SESSION_TOKEN_KEY || CLIENT_CFG.sessionTokenKey);
+          CLIENT_CFG.sessionShortHours = Number(auth.SESSION_SHORT_HOURS || CLIENT_CFG.sessionShortHours);
+          CLIENT_CFG.sessionLongDays = Number(auth.SESSION_LONG_DAYS || CLIENT_CFG.sessionLongDays);
+        }).apiGetCentralConfig();
+      }
+
       function login(){
         setBtnLoading('btnLogin', true);
 
@@ -605,20 +623,21 @@
           if(res && res.ok){
             // Save session token to storage
             const sessionToken = res.sessionToken || '';
+            const sessionTokenKey = CLIENT_CFG.sessionTokenKey || 'sessionToken';
             if (rememberMe) {
               // Remember me: Save to localStorage (persistent across tabs/windows)
-              localStorage.setItem('sessionToken', sessionToken);
-              sessionStorage.removeItem('sessionToken');
+              localStorage.setItem(sessionTokenKey, sessionToken);
+              sessionStorage.removeItem(sessionTokenKey);
             } else {
               // No remember me: Save to sessionStorage (cleared on tab close)
-              sessionStorage.setItem('sessionToken', sessionToken);
-              localStorage.removeItem('sessionToken');
+              sessionStorage.setItem(sessionTokenKey, sessionToken);
+              localStorage.removeItem(sessionTokenKey);
             }
             
             const googleEmail = res.googleEmail || 'N/A';
             const msg = rememberMe 
-              ? `Login berhasil (sesi 7 hari) - ${googleEmail}` 
-              : `Login berhasil (sesi 2 jam) - ${googleEmail}`;
+              ? `Login berhasil (sesi ${CLIENT_CFG.sessionLongDays} hari) - ${googleEmail}` 
+              : `Login berhasil (sesi ${CLIENT_CFG.sessionShortHours} jam) - ${googleEmail}`;
             showToast('ok', msg, 'Mengalihkan ke dashboard...');
             setTimeout(hardRedirectHome_, 250);
           } else {
@@ -688,6 +707,7 @@
       });
 
       // init
+      loadCentralConfigClient_();
       loadThemeList();
       loadRandomTheme();
     </script>
