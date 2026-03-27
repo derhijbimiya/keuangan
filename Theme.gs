@@ -15,6 +15,78 @@ const THEME_DEFAULT_KEY = 'dark-blue-modern';
 
 const THEME_REGISTRY = Object.freeze({
   'cyber-pink': {
+  },
+  'neon-tokyo-night': {
+  },
+  'emerald-forest': {
+  },
+  'inferno-gold': {
+  },
+  'sakura-moonlight': {
+    name: 'Sakura Moonlight',
+    description: 'Soft pink japan / moonlight',
+    vars: {
+      bgMain: '#0c070a',
+      bgCard: '#180f14',
+      accent: '#fb7185',
+      accentSoft: 'rgba(251,113,133,.25)',
+      textMain: '#fff0f4',
+      textSoft: 'rgba(255,210,220,.7)',
+      bgGradient: 'linear-gradient(135deg,#050304,#1a0c12)',
+      topbarBg: '#12080c',
+      inputBg: '#241018',
+      borderColor: 'rgba(251,113,133,.4)',
+      cardShadow: '0 0 20px rgba(251,113,133,.2)'
+    }
+  },
+    name: 'Inferno Black Gold',
+    description: 'Luxury dark / gold premium',
+    vars: {
+      bgMain: '#070707',
+      bgCard: '#111111',
+      accent: '#f5c542',
+      accentSoft: 'rgba(245,197,66,.25)',
+      textMain: '#fff8e6',
+      textSoft: 'rgba(255,230,180,.7)',
+      bgGradient: 'linear-gradient(135deg,#040404,#1a1405)',
+      topbarBg: '#0e0e0e',
+      inputBg: '#1a1a1a',
+      borderColor: 'rgba(245,197,66,.4)',
+      cardShadow: '0 0 25px rgba(245,197,66,.25)'
+    }
+  },
+    name: 'Emerald Forest',
+    description: 'Dark nature / emerald green',
+    vars: {
+      bgMain: '#050c08',
+      bgCard: '#0c1a12',
+      accent: '#22c55e',
+      accentSoft: 'rgba(34,197,94,.25)',
+      textMain: '#eafff2',
+      textSoft: 'rgba(200,255,220,.7)',
+      bgGradient: 'linear-gradient(135deg,#020805,#0a1a12)',
+      topbarBg: '#08140d',
+      inputBg: '#10281a',
+      borderColor: 'rgba(34,197,94,.4)',
+      cardShadow: '0 0 20px rgba(34,197,94,.2)'
+    }
+  },
+    name: 'Neon Tokyo Night',
+    description: 'Cyberpunk Tokyo / neon city night',
+    vars: {
+      bgMain: '#050008',
+      bgCard: '#0f0618',
+      accent: '#00f7ff',
+      accentSoft: 'rgba(0,247,255,.25)',
+      textMain: '#ffffff',
+      textSoft: 'rgba(200,255,255,.7)',
+      bgGradient: 'linear-gradient(135deg,#020005,#12001a)',
+      topbarBg: '#0a0212',
+      inputBg: '#160b22',
+      borderColor: 'rgba(0,247,255,.4)',
+      cardShadow: '0 0 25px rgba(0,247,255,.25)'
+    }
+  },
     name: 'Cyber Pink',
     description: 'Futuristik / cyber / gaming',
     vars: {
